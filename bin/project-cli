@@ -49,10 +49,11 @@ validate_project_name() {
   fi
 }
 
-# Function to convert absolute path to relative path from project root
+# Function to convert absolute path to relative path from given base directory
 get_relative_path() {
-  local target_file="$1"
-  local relative_path="${target_file#$CURRENT_DIR/}"
+  local file_path="$1"
+  local base_dir="$2"
+  local relative_path="${file_path#$base_dir/}"
   echo "$relative_path"
 }
 
@@ -67,8 +68,8 @@ merge_file() {
   else
     local relative_target_path
     local relative_source_path
-    relative_target_path=$(get_relative_path "$target_file")
-    relative_source_path=$(get_relative_path "$source_file")
+    relative_target_path=$(get_relative_path "$target_file" "$CURRENT_DIR")
+    relative_source_path=$(get_relative_path "$source_file" "$FEATURES_DIR")
 
     # Ask user whether to skip, replace, or merge the file
     echo -e "\n${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
@@ -80,10 +81,6 @@ merge_file() {
 
     case $choice in
     1)
-      echo "source_file $source_file"
-      echo "relative_source_path $relative_source_path"
-      echo "target_file $target_file"
-      echo "relative_target_path $relative_target_path"
       echo -e "${INFO_COLOR}Skipping source file $relative_source_path...${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature)")
       ;;
