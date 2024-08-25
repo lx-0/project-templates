@@ -45,20 +45,22 @@ fi
 # Make the CLI script executable
 chmod +x "$CLI_PATH" || handle_error "Failed to make the CLI executable."
 
-# Add the CLI to the user's PATH by updating their shell configuration
-SHELL_CONFIG="$HOME/.bashrc"
-
-if [ -n "$ZSH_VERSION" ]; then
+# Determine the correct shell configuration file
+if [[ "$SHELL" == */zsh ]]; then
   SHELL_CONFIG="$HOME/.zshrc"
+  SHELL_CONFIG_SHORT="~/.zshrc"
+else
+  SHELL_CONFIG="$HOME/.bashrc"
+  SHELL_CONFIG_SHORT="~/.bashrc"
 fi
 
-# Check if PATH already includes the CLI directory
+# Add the CLI to the user's PATH
 if ! grep -q "$INSTALL_DIR/bin" "$SHELL_CONFIG"; then
   echo "export PATH=\$PATH:$INSTALL_DIR/bin" >>"$SHELL_CONFIG" || handle_error "Failed to add $INSTALL_DIR/bin to PATH."
-  echo -e "${GREEN}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG.${NC}"
+  echo -e "${GREEN}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG_SHORT.${NC}"
 else
   echo -e "${YELLOW}$INSTALL_DIR/bin is already in your PATH.${NC}"
 fi
 
 echo -e "${GREEN}Setup complete. You can now run '${CLI_NAME}' from anywhere.${NC}"
-echo -e "${YELLOW}Please restart your terminal or run 'source $SHELL_CONFIG' to apply the changes.${NC}"
+echo -e "${YELLOW}Please restart your terminal or run 'source $SHELL_CONFIG_SHORT' to apply the changes.${NC}"
