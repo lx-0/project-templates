@@ -109,10 +109,10 @@ templates/django-template/
 ├── manage.py
 ├── requirements.txt
 ├── myapp/
-│ ├── **init**.py
-│ ├── settings.py
-│ ├── urls.py
-│ └── wsgi.py
+│   ├── __init__.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
 └── README.md
 ```
 
@@ -122,10 +122,10 @@ You can add new features that can be integrated into any project created from a 
 
 1. **Create a New Feature Directory:**
 
-   Inside the `common/` directory, create a new directory for your feature. For example, to add ESLint configuration, create a directory named `eslint-config`.
+   Inside the `features/` directory, create a new directory for your feature. For example, to add ESLint configuration, create a directory named `eslint-config`.
 
    ```bash
-   mkdir common/eslint-config
+   mkdir features/eslint-config
    ```
 
 2. **Add Configuration Files:**
@@ -141,7 +141,7 @@ You can add new features that can be integrated into any project created from a 
    Once your feature is ready, commit your changes and push them to the repository.
 
    ```bash
-   git add common/eslint-config
+   git add features/eslint-config
    git commit -m "Add ESLint configuration feature"
    git push origin main
    ```
@@ -149,7 +149,7 @@ You can add new features that can be integrated into any project created from a 
 ### Example Structure
 
 ```plaintext
-common/eslint-config/
+features/eslint-config/
 ├── .eslintrc.json
 ├── .eslintignore
 └── README.md
@@ -162,19 +162,19 @@ Here’s an overview of the directory structure used in this repository:
 ```plaintext
 project-templates/
 │
-├── common/ # Contains shared features that can be integrated into any project
-│ ├── vscode-settings/
-│ ├── prettier-config/
-│ ├── git-integration/
-│ └── docker-config/
+├── features/                 # Contains shared features that can be integrated into any project
+│   ├── vscode-settings/
+│   ├── prettier-config/
+│   ├── git-integration/
+│   └── docker-config/
 │
 ├── templates/
-│ ├── node-template/ # Example project template for Node.js projects
-│ ├── python-template/ # Example project template for Python projects
-│ └── react-template/ # Example project template for React projects
+│   ├── node-template/        # Example project template for Node.js projects
+│   ├── python-template/      # Example project template for Python projects
+│   └── react-template/       # Example project template for React projects
 │
 ├── bin/
-│ └── project-cli.sh # Script to create a new project and integrate features
+│   └── project-cli.sh        # Script to create a new project and integrate features
 └── README.md
 ```
 

@@ -21,7 +21,7 @@ handle_error() {
   exit 1
 }
 
-# Function to run a command silently with optional dim output
+# Function to run a command silently with dim output in verbose mode
 run_command_silently() {
   local output
   output=$("$@" 2>&1)
@@ -50,10 +50,10 @@ done
 # Clone or update the repository
 if [ -d "$INSTALL_DIR" ]; then
   echo -e "${YELLOW}Updating the project-templates repository...${NC}"
-  run_command_silently git -C "$INSTALL_DIR" pull || exit 1
+  run_command_silently git -C "$INSTALL_DIR" pull || handle_error "Failed to update the repository."
 else
   echo -e "${YELLOW}Cloning the project-templates repository...${NC}"
-  run_command_silently git clone "$REPO_URL" "$INSTALL_DIR" || exit 1
+  run_command_silently git clone "$REPO_URL" "$INSTALL_DIR" || handle_error "Failed to clone the repository. Please check the URL: $REPO_URL"
 fi
 
 # Ensure the CLI script exists
@@ -79,8 +79,8 @@ if ! grep -q "$INSTALL_DIR/bin" "$SHELL_CONFIG"; then
   echo "export PATH=\$PATH:$INSTALL_DIR/bin" >>"$SHELL_CONFIG" || handle_error "Failed to add $INSTALL_DIR/bin to PATH."
   echo -e "${GREEN}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG_SHORT.${NC}"
 else
-  echo -e "${YELLOW}$INSTALL_DIR/bin is already in your PATH.${NC}"
+  echo "$INSTALL_DIR/bin is already in your PATH."
 fi
 
-echo -e "${GREEN}Setup complete. You can now run '${CLI_NAME}' from anywhere.${NC}"
+echo -e "\n${GREEN}Setup complete. You can now run '${CLI_NAME}' from anywhere.${NC}"
 echo -e "${YELLOW}Please restart your terminal or run 'source $SHELL_CONFIG_SHORT' to apply the changes.${NC}"
