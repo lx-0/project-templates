@@ -71,11 +71,12 @@ merge_file() {
     relative_source_path=$(get_relative_path "$source_file")
 
     # Ask user whether to skip, replace, or merge the file
-    echo -e "${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
+    echo -e "\n${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
     echo -e "${PROMPT_COLOR}1) Skip${NC}"
     echo -e "${PROMPT_COLOR}2) Replace${NC}"
     echo -e "${PROMPT_COLOR}3) Merge${NC}"
-    read -p "${PROMPT_COLOR}Enter your choice (1/2/3):${NC} " choice
+    printf "\n${PROMPT_COLOR}Enter your choice (1/2/3):${NC} "
+    read -a choice
 
     case $choice in
     1)
@@ -137,7 +138,7 @@ select_features() {
     index=$((index + 1))
   done
 
-  printf "${PROMPT_COLOR}Enter the numbers of the features you want to integrate (space-separated):${NC} "
+  printf "\n${PROMPT_COLOR}Enter the numbers of the features you want to integrate (space-separated):${NC} "
   read -a selections
 
   selected_features=()
@@ -247,7 +248,7 @@ fi
 for feature in "${selected_features[@]}"; do
   FEATURE_PATH="$FEATURES_DIR/$feature"
   if [ -d "$FEATURE_PATH" ]; then
-    echo -e "${INFO_COLOR}Integrating $feature...${NC}"
+    echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
     for file in $(find "$FEATURE_PATH" -type f); do
       filename=$(basename "$file")
       merge_file "$file" "$CURRENT_DIR/$project_name/$filename" "$feature"
