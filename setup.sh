@@ -10,14 +10,14 @@ VERBOSE=false
 # Color codes for output
 INFO_COLOR='\033[0;34m'   # Blue for informational messages
 PROMPT_COLOR='\033[0;32m' # Green for prompts
-RED='\033[0;31m'          # Red for errors
+ERROR_COLOR='\033[0;31m'  # Red for errors
 DIM='\033[2m'
 NC='\033[0m' # No color
 
 # Function to handle errors with detailed output
 handle_error() {
-  echo -e "${RED}Error: $1${NC}"
-  [ -n "$2" ] && echo -e "${RED}$2${NC}"
+  echo -e "${ERROR_COLOR}Error: $1${NC}"
+  [ -n "$2" ] && echo -e "${ERROR_COLOR}$2${NC}"
   exit 1
 }
 

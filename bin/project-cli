@@ -178,17 +178,43 @@ select_template() {
 select_features() {
   echo -e "\n${INFO_COLOR}Available features:${NC}"
   features=()
+  preselected=()
+
   index=1
   for dir in "$FEATURES_DIR"/*/; do
     feature=$(basename "$dir")
-    echo -e "${INFO_COLOR}$index) $feature${NC}"
+
+    # Check if this feature is preselected in the template configuration
+    if [[ " ${enabled_features[@]} " =~ " $feature " ]]; then
+      echo -e "${INFO_COLOR}$index) $feature *${NC}"
+      preselected+=("$index")
+    else
+      echo -e "${INFO_COLOR}$index) $feature${NC}"
+    fi
+
     features+=("$feature")
     index=$((index + 1))
   done
 
-  printf "\n${PROMPT_COLOR}Enter the numbers of the features you want to integrate (space-separated):${NC} "
-  read -a selections
+  # Convert preselected indices to space-separated string
+  preselected_string=$(
+    IFS=" "
+    echo "${preselected[*]}"
+  )
 
+  printf "${PROMPT_COLOR}Enter the numbers of the features you want to integrate (space-separated):${NC} [${preselected_string}] "
+  read -r -a selections
+
+  # If the user just hits enter, use the preselected features
+  if [ -z "${selections[*]}" ]; then
+    selections=("${preselected[@]}")
+  else
+    # Merge user selections with preselected features, avoiding duplicates
+    selections=("${selections[@]}" "${preselected[@]}")
+    selections=($(echo "${selections[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+  fi
+
+  # Convert selected indices to feature names
   selected_features=()
   for i in "${selections[@]}"; do
     if [[ "$i" =~ ^[0-9]+$ ]] && ((i >= 1 && i <= ${#features[@]})); then
@@ -261,6 +287,18 @@ if [ -z "$template" ]; then
   select_template
 fi
 
+# Path to the template configuration file
+template_config_file="$TEMPLATES_DIR/$template/project-cli.json"
+
+# Initialize an array for enabled features
+enabled_features=()
+
+# Check if the project-cli.json file exists and read it
+if [ -f "$template_config_file" ]; then
+  echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
+  enabled_features=($(jq -r '.features[]' "$template_config_file"))
+fi
+
 if [ -z "$project_name" ]; then
   while true; do
     printf "${PROMPT_COLOR}Enter the name of the new project:${NC} "
@@ -290,6 +328,10 @@ if [ -z "$features" ]; then
   select_features
 else
   IFS=',' read -ra selected_features <<<"$features"
+
+  # Merge the selected features with the enabled features from the template, avoiding duplicates
+  selected_features=("${selected_features[@]}" "${enabled_features[@]}")
+  selected_features=($(echo "${selected_features[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 fi
 
 # Integrate selected features and merge files if necessary
