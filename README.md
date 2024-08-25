@@ -15,16 +15,24 @@ Welcome to the Project Templates Repository! This repository helps you quickly s
 To set up the CLI, the preferred method is to use `curl` by running the following command:
 
 ```bash
-curl -s https://raw.githubusercontent.com/yourusername/project-templates/main/setup.sh | bash
+curl -s https://raw.githubusercontent.com/lx-0/project-templates/main/setup.sh | bash
 ```
 
 Alternatively, you can use `wget`:
 
 ```bash
-wget -q -O - https://raw.githubusercontent.com/yourusername/project-templates/main/setup.sh | bash
+wget -q -O - https://raw.githubusercontent.com/lx-0/project-templates/main/setup.sh | bash
 ```
 
-This will clone the repository into `\$HOME/.project-templates`, make the CLI executable, and add it to your `PATH`. After running the setup script, please restart your terminal or run `source ~/.bashrc` (or `source ~/.zshrc` if using Zsh) to apply the changes.
+This will clone the repository into `~/.project-templates`, make the CLI executable, and add it to your `PATH`. After running the setup script, please restart your terminal or run `source ~/.bashrc` (or `source ~/.zshrc` if using Zsh) to apply the changes.
+
+### Verbose Mode
+
+By default, the script runs in a quiet mode where command outputs are dimmed. If you want to see detailed output for all commands, you can use the `--verbose` flag:
+
+```bash
+./setup.sh --verbose
+```
 
 ## Creating a New Project
 
