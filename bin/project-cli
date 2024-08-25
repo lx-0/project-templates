@@ -80,6 +80,10 @@ merge_file() {
 
     case $choice in
     1)
+      echo "source_file $source_file"
+      echo "relative_source_path $relative_source_path"
+      echo "target_file $target_file"
+      echo "relative_target_path $relative_target_path"
       echo -e "${INFO_COLOR}Skipping source file $relative_source_path...${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature)")
       ;;
@@ -117,7 +121,7 @@ select_template() {
     index=$((index + 1))
   done
 
-  printf "${PROMPT_COLOR}Select a project template by number:${NC} "
+  printf "\n${PROMPT_COLOR}Select a project template by number:${NC} "
   read template_index
   template="${templates[$((template_index - 1))]}"
 
