@@ -49,6 +49,13 @@ validate_project_name() {
   fi
 }
 
+# Function to convert absolute path to relative path from project root
+get_relative_path() {
+  local target_file="$1"
+  local relative_path="${target_file#$CURRENT_DIR/}"
+  echo "$relative_path"
+}
+
 # Function to merge files if they already exist
 merge_file() {
   local source_file="$1"
@@ -58,8 +65,13 @@ merge_file() {
   if [ ! -f "$target_file" ]; then
     cp "$source_file" "$target_file"
   else
+    local relative_target_path
+    local relative_source_path
+    relative_target_path=$(get_relative_path "$target_file")
+    relative_source_path=$(get_relative_path "$source_file")
+
     # Ask user whether to skip, replace, or merge the file
-    echo -e "${PROMPT_COLOR}File $target_file already exists. Choose an option:${NC}"
+    echo -e "${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
     echo -e "${PROMPT_COLOR}1) Skip${NC}"
     echo -e "${PROMPT_COLOR}2) Replace${NC}"
     echo -e "${PROMPT_COLOR}3) Merge${NC}"
@@ -67,26 +79,26 @@ merge_file() {
 
     case $choice in
     1)
-      echo -e "${INFO_COLOR}Skipping $target_file...${NC}"
-      skipped_files+=("Skipped: $target_file (from $feature)")
+      echo -e "${INFO_COLOR}Skipping source file $relative_source_path...${NC}"
+      skipped_files+=("Skipped: $relative_source_path (from $feature)")
       ;;
     2)
-      echo -e "${INFO_COLOR}Replacing $target_file...${NC}"
+      echo -e "${INFO_COLOR}Replacing $relative_target_path with $relative_source_path...${NC}"
       cp "$source_file" "$target_file"
-      replaced_files+=("Replaced: $target_file (from $feature)")
+      replaced_files+=("Replaced: $relative_target_path with $relative_source_path (from $feature)")
       ;;
     3)
-      echo -e "${INFO_COLOR}Merging $source_file into $target_file...${NC}"
+      echo -e "${INFO_COLOR}Merging $relative_source_path into $relative_target_path...${NC}"
       if [[ "$target_file" == *.json ]]; then
         jq -s '.[0] * .[1]' "$target_file" "$source_file" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
       else
         grep -Fxqf "$source_file" "$target_file" || cat "$source_file" >>"$target_file"
       fi
-      merged_files+=("Merged: $target_file (from $feature)")
+      merged_files+=("Merged: $relative_source_path into $relative_target_path (from $feature)")
       ;;
     *)
-      echo -e "${RED}Invalid choice. Skipping $target_file.${NC}"
-      skipped_files+=("Skipped: $target_file (from $feature) [Invalid choice]")
+      echo -e "${RED}Invalid choice. Skipping source file $relative_source_path.${NC}"
+      skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
   fi
