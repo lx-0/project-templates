@@ -8,9 +8,9 @@ CLI_PATH="$INSTALL_DIR/bin/$CLI_NAME"
 VERBOSE=false
 
 # Color codes for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
+INFO_COLOR='\033[0;34m'   # Blue for informational messages
+PROMPT_COLOR='\033[0;32m' # Green for prompts
+RED='\033[0;31m'          # Red for errors
 DIM='\033[2m'
 NC='\033[0m' # No color
 
@@ -49,10 +49,10 @@ done
 
 # Clone or update the repository
 if [ -d "$INSTALL_DIR" ]; then
-  echo -e "${YELLOW}Updating the project-templates repository...${NC}"
+  echo -e "${INFO_COLOR}Updating the project-templates repository...${NC}"
   run_command_silently git -C "$INSTALL_DIR" pull || handle_error "Failed to update the repository."
 else
-  echo -e "${YELLOW}Cloning the project-templates repository...${NC}"
+  echo -e "${INFO_COLOR}Cloning the project-templates repository...${NC}"
   run_command_silently git clone "$REPO_URL" "$INSTALL_DIR" || handle_error "Failed to clone the repository. Please check the URL: $REPO_URL"
 fi
 
@@ -77,10 +77,10 @@ fi
 if ! grep -q "$INSTALL_DIR/bin" "$SHELL_CONFIG"; then
   echo -e "\n# Add project-cli to PATH for easier access to project templates" >>"$SHELL_CONFIG"
   echo "export PATH=\$PATH:$INSTALL_DIR/bin" >>"$SHELL_CONFIG" || handle_error "Failed to add $INSTALL_DIR/bin to PATH."
-  echo -e "${GREEN}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG_SHORT.${NC}"
+  echo -e "${INFO_COLOR}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG_SHORT.${NC}"
 else
-  echo "$INSTALL_DIR/bin is already in your PATH."
+  echo -e "${DIM}$INSTALL_DIR/bin is already in your PATH.${NC}"
 fi
 
-echo -e "\n${GREEN}Setup complete. You can now run '${CLI_NAME}' from anywhere.${NC}"
-echo -e "${YELLOW}Please restart your terminal or run 'source $SHELL_CONFIG_SHORT' to apply the changes.${NC}"
+echo -e "\n${INFO_COLOR}Setup complete. You can now run '${CLI_NAME}' from anywhere.${NC}"
+echo -e "${PROMPT_COLOR}Please restart your terminal or run 'source $SHELL_CONFIG_SHORT' to apply the changes.${NC}"
