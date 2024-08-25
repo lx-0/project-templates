@@ -56,6 +56,7 @@ fi
 
 # Add the CLI to the user's PATH
 if ! grep -q "$INSTALL_DIR/bin" "$SHELL_CONFIG"; then
+  echo -e "\n# Add project-cli to PATH for easier access to project templates" >>"$SHELL_CONFIG"
   echo "export PATH=\$PATH:$INSTALL_DIR/bin" >>"$SHELL_CONFIG" || handle_error "Failed to add $INSTALL_DIR/bin to PATH."
   echo -e "${GREEN}Added $INSTALL_DIR/bin to PATH in $SHELL_CONFIG_SHORT.${NC}"
 else
