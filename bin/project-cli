@@ -7,6 +7,7 @@ COMMON_DIR="$HOME/.project-templates/common"
 # Color codes for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No color
 
@@ -16,15 +17,6 @@ handle_error() {
   exit 1
 }
 
-# Function to run a command and apply dim color to its output
-run_command_with_dim_output() {
-  local output
-  output=$("$@" 2>&1)
-  local status=$?
-  echo -e "${DIM}${output}${NC}"
-  return $status
-}
-
 # Interactive template selection
 select_template() {
   echo -e "${YELLOW}Available project templates:${NC}"
@@ -32,12 +24,12 @@ select_template() {
   index=1
   for dir in "$TEMPLATES_DIR"/*/; do
     template=$(basename "$dir")
-    echo "$index) $template"
+    echo -e "${BLUE}$index) $template${NC}"
     templates+=("$template")
     index=$((index + 1))
   done
 
-  read -p "Select a project template by number: " template_index
+  read -p "${GREEN}Select a project template by number:${NC} " template_index
   template="${templates[$((template_index - 1))]}"
 
   if [ -z "$template" ]; then
@@ -52,12 +44,12 @@ select_features() {
   index=1
   for dir in "$COMMON_DIR"/*/; do
     feature=$(basename "$dir")
-    echo "$index) $feature"
+    echo -e "${BLUE}$index) $feature${NC}"
     features+=("$feature")
     index=$((index + 1))
   done
 
-  read -p "Enter the numbers of the features you want to integrate (space-separated): " -a selections
+  read -p "${GREEN}Enter the numbers of the features you want to integrate (space-separated):${NC} " -a selections
 
   selected_features=()
   for i in "${selections[@]}"; do
@@ -99,7 +91,7 @@ if [ -z "$template" ]; then
 fi
 
 if [ -z "$project_name" ]; then
-  read -p "Enter the name of the new project: " project_name
+  read -p "${GREEN}Enter the name of the new project:${NC} " project_name
 fi
 
 # Create the project directory in the current directory
