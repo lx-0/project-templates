@@ -12,7 +12,7 @@ IGNORED_FILES=("README.md" "LICENSE")
 # Color codes for output
 INFO_COLOR='\033[0;34m'   # Blue for informational messages
 PROMPT_COLOR='\033[0;32m' # Green for prompts
-RED='\033[0;31m'          # Red for errors
+ERROR_COLOR='\033[0;31m'  # Red for errors
 DIM='\033[2m'
 NC='\033[0m' # No color
 
@@ -26,8 +26,8 @@ global CHOICE_ALL
 
 # Function to handle errors with detailed output
 handle_error() {
-  echo -e "${RED}Error: $1${NC}"
-  [ -n "$2" ] && echo -e "${RED}$2${NC}"
+  echo -e "${ERROR_COLOR}Error: $1${NC}"
+  [ -n "$2" ] && echo -e "${ERROR_COLOR}$2${NC}"
   exit 1
 }
 
@@ -146,7 +146,7 @@ merge_file() {
       merged_files+=("Merged: $relative_source_path into $relative_target_path (from $feature)")
       ;;
     *)
-      echo -e "${RED}Invalid choice. Skipping source file $relative_source_path.${NC}"
+      echo -e "${ERROR_COLOR}Invalid choice. Skipping source file $relative_source_path.${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
@@ -194,7 +194,7 @@ select_features() {
     if [[ "$i" =~ ^[0-9]+$ ]] && ((i >= 1 && i <= ${#features[@]})); then
       selected_features+=("${features[$((i - 1))]}")
     else
-      echo -e "${RED}Invalid selection: $i${NC}"
+      echo -e "${ERROR_COLOR}Invalid selection: $i${NC}"
     fi
   done
 }
@@ -308,11 +308,11 @@ for feature in "${selected_features[@]}"; do
       merge_file "$file" "$target_file" "$feature"
     done < <(find "$FEATURE_PATH" -type f -print0)
   else
-    echo -e "${RED}Feature $feature not found.${NC}"
+    echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
   fi
 done
 
 # Display a summary of file actions
 display_file_action_summary
 
-echo -e "\n${INFO_COLOR}Project setup for '$project_name' complete.${NC}"
+echo -e "\n${PROMPT_COLOR}Project setup for '$project_name' complete.${NC}\n"
