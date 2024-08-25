@@ -1,3 +1,18 @@
 {
-	"recommendations": []
+	"recommendations": [
+		// General (Enable Globally)
+		"alefragnani.project-manager",
+		"aaron-bond.better-comments",
+		"grimmer.vscode-back-forward-button",
+		"gruntfuggly.todo-tree",
+		// Error checking (Enable Globally)
+		"usernamehw.errorlens",
+		"streetsidesoftware.code-spell-checker",
+		"streetsidesoftware.code-spell-checker-german"
+		// // Dev Container (Enable Workspace)
+		// "ms-azuretools.vscode-docker", // do not install in attached container
+		// "ms-vscode-remote.remote-containers", // do not install in attached container
+		// // IDE AI Integration (Enable Workspace)
+		// "github.copilot"
+	]
 }

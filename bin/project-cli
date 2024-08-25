@@ -317,7 +317,8 @@ fi
 # Create the project directory in the current directory
 CURRENT_DIR=$(pwd)
 if [ -d "$TEMPLATES_DIR/$template" ]; then
-  run_command_silently cp -R "$TEMPLATES_DIR/$template/." "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
+  # Use rsync to copy the template files to the project directory, excluding project-cli.json
+  run_command_silently rsync -av --exclude='project-cli.json' "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name/" || handle_error "Failed to create the project directory."
   echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
 else
   handle_error "Template '$template' not found."

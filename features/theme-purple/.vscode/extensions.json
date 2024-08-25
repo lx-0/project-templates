@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    // Theme and Style (Enable Globally)
+    "johnpapa.vscode-peacock",
+    "equinusocio.vsc-material-theme",
+    "pkief.material-icon-theme",
+    "ahmadawais.shades-of-purple"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Version Control (Enable Workspace with Git)
+    "eamodio.gitlens",
+    "donjayamanne.githistory",
+    "vivaxy.vscode-conventional-commits" // Conventional Commits integration for VSCode
+  ]
+}

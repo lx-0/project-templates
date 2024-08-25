@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Code formatting (Enable Globally)
+    "esbenp.prettier-vscode", // JavaScript, TypeScript, CSS, JSON, HTML, Markdown, and more
+    "ms-python.black-formatter", // Python code formatter
+    "foxundermoon.shell-format" // Shell script formatter
+  ]
+}
