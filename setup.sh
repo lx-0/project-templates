@@ -5,6 +5,7 @@ REPO_URL="https://github.com/lx-0/project-templates.git"
 INSTALL_DIR="$HOME/.project-templates"
 CLI_NAME="project-cli"
 CLI_PATH="$INSTALL_DIR/bin/$CLI_NAME"
+VERBOSE=false
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -13,28 +14,46 @@ RED='\033[0;31m'
 DIM='\033[2m'
 NC='\033[0m' # No color
 
-# Function to handle errors
+# Function to handle errors with detailed output
 handle_error() {
   echo -e "${RED}Error: $1${NC}"
+  [ -n "$2" ] && echo -e "${RED}$2${NC}"
   exit 1
 }
 
-# Function to run a command and apply dim color to its output
-run_command_with_dim_output() {
+# Function to run a command silently with optional dim output
+run_command_silently() {
   local output
   output=$("$@" 2>&1)
   local status=$?
-  echo -e "${DIM}${output}${NC}"
+
+  if [ "$VERBOSE" = true ]; then
+    echo -e "${DIM}${output}${NC}"
+  fi
+
+  if [ $status -ne 0 ]; then
+    handle_error "Failed to run the command: $*" "$output"
+  fi
+
   return $status
 }
 
+# Parse command-line arguments
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+  --verbose) VERBOSE=true ;;
+  *) handle_error "Unknown parameter passed: $1" ;;
+  esac
+  shift
+done
+
 # Clone or update the repository
 if [ -d "$INSTALL_DIR" ]; then
-  echo -e "${YELLOW}Updating the existing project-templates repository...${NC}"
-  run_command_with_dim_output git -C "$INSTALL_DIR" pull || handle_error "Failed to update the repository."
+  echo -e "${YELLOW}Updating the project-templates repository...${NC}"
+  run_command_silently git -C "$INSTALL_DIR" pull || exit 1
 else
   echo -e "${YELLOW}Cloning the project-templates repository...${NC}"
-  run_command_with_dim_output git clone "$REPO_URL" "$INSTALL_DIR" || handle_error "Failed to clone the repository. Please check the URL: $REPO_URL"
+  run_command_silently git clone "$REPO_URL" "$INSTALL_DIR" || exit 1
 fi
 
 # Ensure the CLI script exists
@@ -43,7 +62,7 @@ if [ ! -f "$CLI_PATH" ]; then
 fi
 
 # Make the CLI script executable
-chmod +x "$CLI_PATH" || handle_error "Failed to make the CLI executable."
+run_command_silently chmod +x "$CLI_PATH" || handle_error "Failed to make the CLI executable."
 
 # Determine the correct shell configuration file
 if [[ "$SHELL" == */zsh ]]; then
