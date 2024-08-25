@@ -106,6 +106,7 @@ merge_file() {
       # If no input is given, default to "6) Merge All"
       echo "===$choice==="
       if [ ${#errors[@]} -eq 0 ]; then
+        echo "===="
         choice=6
       fi
 
