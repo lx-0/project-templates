@@ -13,6 +13,11 @@ RED='\033[0;31m'          # Red for errors
 DIM='\033[2m'
 NC='\033[0m' # No color
 
+# Arrays to keep track of file actions
+skipped_files=()
+merged_files=()
+replaced_files=()
+
 # Function to handle errors with detailed output
 handle_error() {
   echo -e "${RED}Error: $1${NC}"
@@ -41,6 +46,49 @@ run_command_silently() {
 validate_project_name() {
   if [[ ! "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
     handle_error "Invalid project name. The project name must be in kebab-case (e.g., my-project-name)."
+  fi
+}
+
+# Function to merge files if they already exist
+merge_file() {
+  local source_file="$1"
+  local target_file="$2"
+  local feature="$3"
+
+  if [ ! -f "$target_file" ]; then
+    cp "$source_file" "$target_file"
+  else
+    # Ask user whether to skip, replace, or merge the file
+    echo -e "${PROMPT_COLOR}File $target_file already exists. Choose an option:${NC}"
+    echo -e "${PROMPT_COLOR}1) Skip${NC}"
+    echo -e "${PROMPT_COLOR}2) Replace${NC}"
+    echo -e "${PROMPT_COLOR}3) Merge${NC}"
+    read -p "${PROMPT_COLOR}Enter your choice (1/2/3):${NC} " choice
+
+    case $choice in
+    1)
+      echo -e "${INFO_COLOR}Skipping $target_file...${NC}"
+      skipped_files+=("Skipped: $target_file (from $feature)")
+      ;;
+    2)
+      echo -e "${INFO_COLOR}Replacing $target_file...${NC}"
+      cp "$source_file" "$target_file"
+      replaced_files+=("Replaced: $target_file (from $feature)")
+      ;;
+    3)
+      echo -e "${INFO_COLOR}Merging $source_file into $target_file...${NC}"
+      if [[ "$target_file" == *.json ]]; then
+        jq -s '.[0] * .[1]' "$target_file" "$source_file" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
+      else
+        grep -Fxqf "$source_file" "$target_file" || cat "$source_file" >>"$target_file"
+      fi
+      merged_files+=("Merged: $target_file (from $feature)")
+      ;;
+    *)
+      echo -e "${RED}Invalid choice. Skipping $target_file.${NC}"
+      skipped_files+=("Skipped: $target_file (from $feature) [Invalid choice]")
+      ;;
+    esac
   fi
 }
 
@@ -88,6 +136,31 @@ select_features() {
       echo -e "${RED}Invalid selection: $i${NC}"
     fi
   done
+}
+
+# Function to display a summary of file actions
+display_file_action_summary() {
+  echo -e "\n${INFO_COLOR}Summary of file actions:${NC}"
+  if [ ${#skipped_files[@]} -gt 0 ]; then
+    echo -e "${INFO_COLOR}Skipped files:${NC}"
+    for file in "${skipped_files[@]}"; do
+      echo -e "${DIM}$file${NC}"
+    done
+  fi
+
+  if [ ${#replaced_files[@]} -gt 0 ]; then
+    echo -e "${INFO_COLOR}Replaced files:${NC}"
+    for file in "${replaced_files[@]}"; do
+      echo -e "${DIM}$file${NC}"
+    done
+  fi
+
+  if [ ${#merged_files[@]} -gt 0 ]; then
+    echo -e "${INFO_COLOR}Merged files:${NC}"
+    for file in "${merged_files[@]}"; do
+      echo -e "${DIM}$file${NC}"
+    done
+  fi
 }
 
 # Main Logic
@@ -145,7 +218,7 @@ fi
 # Create the project directory in the current directory
 CURRENT_DIR=$(pwd)
 if [ -d "$TEMPLATES_DIR/$template" ]; then
-  run_command_silently cp -R "$TEMPLATES_DIR/$template" "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
+  run_command_silently cp -R "$TEMPLATES_DIR/$template/." "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
   echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
 else
   handle_error "Template '$template' not found."
@@ -158,15 +231,21 @@ else
   IFS=',' read -ra selected_features <<<"$features"
 fi
 
-# Integrate selected features
+# Integrate selected features and merge files if necessary
 for feature in "${selected_features[@]}"; do
   FEATURE_PATH="$FEATURES_DIR/$feature"
   if [ -d "$FEATURE_PATH" ]; then
     echo -e "${INFO_COLOR}Integrating $feature...${NC}"
-    run_command_silently cp -R "$FEATURE_PATH/." "$CURRENT_DIR/$project_name" || handle_error "Failed to integrate feature $feature."
+    for file in $(find "$FEATURE_PATH" -type f); do
+      filename=$(basename "$file")
+      merge_file "$file" "$CURRENT_DIR/$project_name/$filename" "$feature"
+    done
   else
     echo -e "${RED}Feature $feature not found.${NC}"
   fi
 done
+
+# Display a summary of file actions
+display_file_action_summary
 
 echo -e "\n${INFO_COLOR}Project setup complete.${NC}"
