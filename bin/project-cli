@@ -143,7 +143,8 @@ merge_file() {
         sed -E 's|//.*$||g; s|/\*.*\*/||g' "$target_file" >"$target_file.stripped"
         sed -E 's|//.*$||g; s|/\*.*\*/||g' "$source_file" >"$source_file.stripped"
 
-        jq -s '.[0] * .[1]' "$target_file.stripped" "$source_file.stripped" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
+        # Merge JSON files, concatenating arrays instead of overwriting them
+        jq -s 'def deepmerge(a;b): reduce b[] as $item (a; . * $item | .[]? //= [] | if type == "array" then . + $item else . end); deepmerge(.[0];.[1:])' "$target_file.stripped" "$source_file.stripped" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
 
         # Clean up temporary files
         rm -f "$target_file.stripped" "$source_file.stripped"
