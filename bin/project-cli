@@ -202,7 +202,7 @@ select_features() {
     features+=("$feature")
     index=$((index + 1))
   done
-  echo "    (* preselected by template)"
+  echo -e "${INFO_COLOR}    (* preselected by template)${NC}"
 
   # Convert preselected indices to space-separated string
   preselected_string=$(
