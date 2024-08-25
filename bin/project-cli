@@ -1,10 +1,13 @@
 #!/bin/bash
 
 # Configuration Variables
-TEMPLATES_DIR="$HOME/.project-templates/templates"
-FEATURES_DIR="$HOME/.project-templates/features"
 REPO_DIR="$HOME/.project-templates"
+TEMPLATES_DIR="$REPO_DIR/templates"
+FEATURES_DIR="$REPO_DIR/features"
 VERBOSE=false
+
+# List of filenames to ignore during the copy process
+IGNORED_FILES=("README.md" "LICENSE")
 
 # Color codes for output
 INFO_COLOR='\033[0;34m'   # Blue for informational messages
@@ -62,6 +65,14 @@ merge_file() {
   local source_file="$1"
   local target_file="$2"
   local feature="$3"
+
+  local filename=$(basename "$source_file")
+
+  # Check if the file is in the ignored list
+  if [[ " ${IGNORED_FILES[@]} " =~ " $filename " ]]; then
+    echo -e "${INFO_COLOR}Ignoring $filename as it is in the ignored files list.${NC}"
+    return
+  fi
 
   if [ ! -f "$target_file" ]; then
     cp "$source_file" "$target_file"
