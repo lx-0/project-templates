@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    // Dev Container (Enable Workspace with Docker)
+    "ms-azuretools.vscode-docker", // do not install in attached container
+    // "ms-vscode-remote.remote-containers", // do not install in attached container
+    // "ms-vscode-remote.remote-ssh",
+    // "ms-vscode-remote.remote-ssh-edit",
+    // "ms-vscode-remote.remote-wsl",
+    "ms-vscode-remote.vscode-remote-extensionpack"
+  ]
+}

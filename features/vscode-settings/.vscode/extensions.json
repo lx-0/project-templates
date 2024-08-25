@@ -9,9 +9,6 @@
 		"usernamehw.errorlens",
 		"streetsidesoftware.code-spell-checker",
 		"streetsidesoftware.code-spell-checker-german"
-		// // Dev Container (Enable Workspace)
-		// "ms-azuretools.vscode-docker", // do not install in attached container
-		// "ms-vscode-remote.remote-containers", // do not install in attached container
 		// // IDE AI Integration (Enable Workspace)
 		// "github.copilot"
 	]
