@@ -21,6 +21,9 @@ skipped_files=()
 merged_files=()
 replaced_files=()
 
+# Global state variable for user choice
+global CHOICE_ALL
+
 # Function to handle errors with detailed output
 handle_error() {
   echo -e "${RED}Error: $1${NC}"
@@ -82,13 +85,35 @@ merge_file() {
     relative_target_path=$(get_relative_path "$target_file" "$CURRENT_DIR")
     relative_source_path=$(get_relative_path "$source_file" "$FEATURES_DIR")
 
-    # Ask user whether to skip, replace, or merge the file
-    echo -e "\n${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
-    echo -e "${PROMPT_COLOR}1) Skip${NC}"
-    echo -e "${PROMPT_COLOR}2) Replace${NC}"
-    echo -e "${PROMPT_COLOR}3) Merge${NC}"
-    printf "\n${PROMPT_COLOR}Enter your choice (1/2/3):${NC} "
-    read -a choice
+    if [ -z "$CHOICE_ALL" ]; then
+      # Ask user whether to skip, replace, or merge the file
+      echo -e "\n${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
+      echo -e "${PROMPT_COLOR}1) Skip${NC}"
+      echo -e "${PROMPT_COLOR}2) Replace${NC}"
+      echo -e "${PROMPT_COLOR}3) Merge${NC}"
+      echo -e "${PROMPT_COLOR}4) Skip All${NC}"
+      echo -e "${PROMPT_COLOR}5) Replace All${NC}"
+      echo -e "${PROMPT_COLOR}6) Merge All${NC}"
+      printf "\n${PROMPT_COLOR}Enter your choice (1/2/3/4/5/6):${NC} "
+      read -a choice
+
+      case $choice in
+      4)
+        CHOICE_ALL=1
+        choice=1
+        ;;
+      5)
+        CHOICE_ALL=2
+        choice=2
+        ;;
+      6)
+        CHOICE_ALL=3
+        choice=3
+        ;;
+      esac
+    else
+      choice=$CHOICE_ALL
+    fi
 
     case $choice in
     1)
