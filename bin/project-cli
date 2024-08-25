@@ -104,7 +104,8 @@ merge_file() {
       read -a choice
 
       # If no input is given, default to "6) Merge All"
-      if [ -z "$choice" ]; then
+      echo "===$choice==="
+      if [ ${#errors[@]} -eq 0 ]; then
         choice=6
       fi
 
