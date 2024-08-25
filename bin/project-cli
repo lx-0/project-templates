@@ -1,50 +1,33 @@
 #!/bin/bash
 
 # Configuration
-REPO_URL="https://github.com/lx-0/project-templates.git"
-LOCAL_REPO_DIR="$HOME/.project-templates"
-TEMPLATES_DIR="$LOCAL_REPO_DIR/templates"
-COMMON_DIR="$LOCAL_REPO_DIR/common"
+TEMPLATES_DIR="$HOME/.project-templates/templates"
+COMMON_DIR="$HOME/.project-templates/common"
 
-# Ensure the repository is up-to-date
-if [ -d "$LOCAL_REPO_DIR" ]; then
-  git -C "$LOCAL_REPO_DIR" pull
-else
-  git clone "$REPO_URL" "$LOCAL_REPO_DIR"
-fi
+# Color codes for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No color
 
-# Function to display help
-show_help() {
-  echo "Usage: project-cli [-t template] [-n project_name] [-f features]"
-  echo ""
-  echo "  -t, --template        The project template to use"
-  echo "  -n, --name            The name of the new project"
-  echo "  -f, --features        Features to integrate (comma-separated)"
-  echo "  -h, --help            Display this help message"
+# Function to handle errors
+handle_error() {
+  echo -e "${RED}Error: $1${NC}"
+  exit 1
 }
 
-# Function to list available templates
-list_templates() {
-  echo "Available project templates:"
-  for dir in "$TEMPLATES_DIR"/*/; do
-    echo "  - $(basename "$dir")"
-  done
-}
-
-# Function to integrate a feature
-integrate_feature() {
-  FEATURE_PATH="$COMMON_DIR/$1"
-  if [ -d "$FEATURE_PATH" ]; then
-    echo "Integrating $1..."
-    cp -R "$FEATURE_PATH/." "$CURRENT_DIR/$project_name"
-  else
-    echo "Feature $1 not found."
-  fi
+# Function to run a command and apply dim color to its output
+run_command_with_dim_output() {
+  local output
+  output=$("$@" 2>&1)
+  local status=$?
+  echo -e "${DIM}${output}${NC}"
+  return $status
 }
 
 # Interactive template selection
 select_template() {
-  echo "Available project templates:"
+  echo -e "${YELLOW}Available project templates:${NC}"
   templates=()
   index=1
   for dir in "$TEMPLATES_DIR"/*/; do
@@ -58,14 +41,13 @@ select_template() {
   template="${templates[$((template_index - 1))]}"
 
   if [ -z "$template" ]; then
-    echo "Invalid selection. Exiting."
-    exit 1
+    handle_error "Invalid selection. Exiting."
   fi
 }
 
 # Interactive feature selection
 select_features() {
-  echo "Available features:"
+  echo -e "${YELLOW}Available features:${NC}"
   features=()
   index=1
   for dir in "$COMMON_DIR"/*/; do
@@ -82,7 +64,7 @@ select_features() {
     if [[ "$i" =~ ^[0-9]+$ ]] && ((i >= 1 && i <= ${#features[@]})); then
       selected_features+=("${features[$((i - 1))]}")
     else
-      echo "Invalid selection: $i"
+      echo -e "${RED}Invalid selection: $i${NC}"
     fi
   done
 }
@@ -103,14 +85,10 @@ while [[ "$#" -gt 0 ]]; do
     shift
     ;;
   -h | --help)
-    show_help
+    echo -e "${YELLOW}Usage: project-cli [-t template] [-n project_name] [-f features]${NC}"
     exit 0
     ;;
-  *)
-    echo "Unknown parameter passed: $1"
-    show_help
-    exit 1
-    ;;
+  *) handle_error "Unknown parameter passed: $1" ;;
   esac
   shift
 done
@@ -128,11 +106,9 @@ fi
 CURRENT_DIR=$(pwd)
 if [ -d "$TEMPLATES_DIR/$template" ]; then
   cp -R "$TEMPLATES_DIR/$template" "$CURRENT_DIR/$project_name"
-  echo "Project '$project_name' created based on template '$template' in $CURRENT_DIR."
+  echo -e "${GREEN}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
 else
-  echo "Error: Template '$template' not found."
-  list_templates
-  exit 1
+  handle_error "Template '$template' not found."
 fi
 
 # If not provided via arguments, ask for features interactively
@@ -144,7 +120,13 @@ fi
 
 # Integrate selected features
 for feature in "${selected_features[@]}"; do
-  integrate_feature "$feature"
+  FEATURE_PATH="$COMMON_DIR/$feature"
+  if [ -d "$FEATURE_PATH" ]; then
+    echo -e "${GREEN}Integrating $feature...${NC}"
+    cp -R "$FEATURE_PATH/." "$CURRENT_DIR/$project_name"
+  else
+    echo -e "${RED}Feature $feature not found.${NC}"
+  fi
 done
 
-echo "Project setup complete."
+echo -e "${GREEN}Project setup complete.${NC}"
