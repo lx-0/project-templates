@@ -315,4 +315,4 @@ done
 # Display a summary of file actions
 display_file_action_summary
 
-echo -e "\n${INFO_COLOR}Project setup complete.${NC}"
+echo -e "\n${INFO_COLOR}Project setup for '$project_name' complete.${NC}"
