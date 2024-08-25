@@ -101,7 +101,7 @@ merge_file() {
       echo -e "${PROMPT_COLOR}5) Replace All${NC}"
       echo -e "${PROMPT_COLOR}6) Merge All (default)${NC}"
       printf "\n${PROMPT_COLOR}Enter your choice (1/2/3/4/5/6):${NC} "
-      read -r choice
+      read -a choice
 
       # If no input is given, default to "6) Merge All"
       if [ -z "$choice" ]; then
