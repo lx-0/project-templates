@@ -139,7 +139,14 @@ merge_file() {
     3)
       echo -e "${INFO_COLOR}Merging $relative_source_path into $relative_target_path...${NC}"
       if [[ "$target_file" == *.json ]]; then
-        jq -s '.[0] * .[1]' "$target_file" "$source_file" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
+        # Strip comments from JSON files before merging
+        sed -E 's|//.*$||g; s|/\*.*\*/||g' "$target_file" >"$target_file.stripped"
+        sed -E 's|//.*$||g; s|/\*.*\*/||g' "$source_file" >"$source_file.stripped"
+
+        jq -s '.[0] * .[1]' "$target_file.stripped" "$source_file.stripped" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
+
+        # Clean up temporary files
+        rm -f "$target_file.stripped" "$source_file.stripped"
       else
         grep -Fxqf "$source_file" "$target_file" || cat "$source_file" >>"$target_file"
       fi
@@ -195,6 +202,7 @@ select_features() {
     features+=("$feature")
     index=$((index + 1))
   done
+  echo "    (* preselected by template)"
 
   # Convert preselected indices to space-separated string
   preselected_string=$(
@@ -202,7 +210,7 @@ select_features() {
     echo "${preselected[*]}"
   )
 
-  printf "${PROMPT_COLOR}Enter the numbers of the features you want to integrate (space-separated):${NC} [${preselected_string}] "
+  printf "${PROMPT_COLOR}Enter the numbers of the additional features you want to integrate (space-separated):${NC} [${preselected_string}] "
   read -r -a selections
 
   # If the user just hits enter, use the preselected features
