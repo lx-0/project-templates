@@ -37,6 +37,13 @@ run_command_silently() {
   return $status
 }
 
+# Function to validate project name (kebab-case)
+validate_project_name() {
+  if [[ ! "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    handle_error "Invalid project name. The project name must be in kebab-case (e.g., my-project-name)."
+  fi
+}
+
 # Interactive template selection
 select_template() {
   echo -e "\n${INFO_COLOR}Available project templates:${NC}"
@@ -121,8 +128,18 @@ if [ -z "$template" ]; then
 fi
 
 if [ -z "$project_name" ]; then
-  printf "${PROMPT_COLOR}Enter the name of the new project:${NC} "
-  read project_name
+  while true; do
+    printf "${PROMPT_COLOR}Enter the name of the new project:${NC} "
+    read project_name
+
+    validate_project_name "$project_name"
+
+    if [ $? -eq 0 ]; then
+      break
+    fi
+  done
+else
+  validate_project_name "$project_name"
 fi
 
 # Create the project directory in the current directory
