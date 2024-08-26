@@ -1,0 +1,28 @@
+{
+  "atlascode.jira.lastCreateSiteAndProject": {
+    "siteId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "projectKey": "XXX"
+  },
+  "atlascode.bitbucket.enabled": false,
+  "atlascode.jira.startWorkBranchTemplate.customPrefixes": [
+    "feature/",
+    "hotfix/"
+  ],
+  "atlascode.jira.todoIssues.triggers": [
+    "TODO:",
+    "BUG:",
+    "FIXME:",
+    "ISSUE:",
+    "TODO"
+  ],
+  "atlascode.jira.jqlList": [
+    {
+      "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "siteId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "name": "My Issues",
+      "query": "(developers = currentUser() OR assignee = currentUser()) AND resolution = Unresolved AND status not in (Done) ORDER BY updated DESC",
+      "enabled": true,
+      "monitor": true
+    }
+  ]
+}

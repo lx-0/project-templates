@@ -1,4 +1,4 @@
-# Prettier Configuration
+# Formatter
 
 This feature provides a standard configuration for [Prettier](https://prettier.io/), an opinionated code formatter.
 

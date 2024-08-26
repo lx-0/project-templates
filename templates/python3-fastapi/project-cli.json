@@ -1,3 +1,3 @@
 {
-  "features": ["vscode-settings", "prettier-config", "dev-container"]
+  "features": ["vscode-settings", "formatter", "dev-container"]
 }
