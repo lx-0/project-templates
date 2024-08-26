@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# echo "PRE-PUSH HOOK"
+# npm run build:nest:prod
+# npm run lint:quiet
+# npm run test

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+## Automatically append jira issue ticket to every commit
+
+set -e
+
+# get current branch
+BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# search jira issue id in a pattern such a "feature/ABC-123-description"
+JIRA_ISSUE=$(echo $BRANCH_NAME | sed -nr 's,[a-z]+/([A-Z0-9]+-[0-9]+)-.+,\1,p')
+
+# only prepare commit message if pattern matched and JIRA_ISSUE was found
+if [[ ! -z $JIRA_ISSUE ]]; then
+  # $1 is the name of the file containing the commit message
+  ## OSX and Linux compatable
+  sed -i '' -e "\$s/\$/\n\n[$JIRA_ISSUE]/" "$1"
+fi
