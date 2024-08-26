@@ -107,24 +107,24 @@ merge_file() {
       if [ -z "${choice[0]}" ]; then
         choice[0]=6
       fi
-
-      case $choice in
-      4)
-        CHOICE_ALL=1
-        choice[0]=1
-        ;;
-      5)
-        CHOICE_ALL=2
-        choice[0]=2
-        ;;
-      6)
-        CHOICE_ALL=3
-        choice[0]=3
-        ;;
-      esac
     else
       choice[0]=$CHOICE_ALL
     fi
+
+    case $choice in
+    4)
+      CHOICE_ALL=1
+      choice[0]=1
+      ;;
+    5)
+      CHOICE_ALL=2
+      choice[0]=2
+      ;;
+    6)
+      CHOICE_ALL=3
+      choice[0]=3
+      ;;
+    esac
 
     case $choice in
     1)
