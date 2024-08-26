@@ -22,7 +22,7 @@ merged_files=()
 replaced_files=()
 
 # Global state variable for user choice
-global CHOICE_ALL
+global CHOICE_ALL=6
 
 # Function to handle errors with detailed output
 handle_error() {
