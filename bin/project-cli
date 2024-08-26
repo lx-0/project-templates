@@ -252,8 +252,11 @@ load_template_config() {
   # Check if the PROJECT_CLI_CONFIG_FILE file exists and read it
   if [ -f "$template_config_file" ]; then
     echo -e "${INFO_COLOR}Loading template configuration from ${PROJECT_CLI_CONFIG_FILE}...${NC}"
-    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file" | tr '\n' ' ')"
-    base_template=$(jq -r '.baseTemplate // empty' "$template_config_file")
+    sed -E 's|//.*$||g; s|/\*.*\*/||g' "$template_config_file" >"$template_config_file.stripped"
+    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file.stripped" | tr '\n' ' ')"
+    base_template=$(jq -r '.baseTemplate' "$template_config_file.stripped")
+    # Clean up temporary files
+    rm -f "$template_config_file.stripped"
   fi
 }
 
@@ -296,15 +299,16 @@ create_project() {
   if [ -n "$base_template" ]; then
     echo -e "${INFO_COLOR}Copying base template '$base_template'...${NC}"
     if [ -d "$TEMPLATES_DIR/$base_template" ]; then
-      copy_and_merge_files "$TEMPLATES_DIR/$base_template/" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
+      copy_and_merge_files "$TEMPLATES_DIR/$base_template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
     else
       handle_error "Base template '$base_template' not found."
     fi
   fi
+  # ! TODO add features from baseTemplate to enabled_features
 
   # Copy the selected template files
   if [ -d "$TEMPLATES_DIR/$template" ]; then
-    copy_and_merge_files "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
+    copy_and_merge_files "$TEMPLATES_DIR/$template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
     echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
   else
     handle_error "Template '$template' not found."
