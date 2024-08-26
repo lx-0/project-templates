@@ -46,9 +46,7 @@ merge_arrays() {
 
   # Merge array1 and array2, avoiding duplicates
   merged_array=("${array1[@]}" "${array2[@]}")
-  read -ra merged_array <<<"$(printf '%s\n' "${merged_array[@]}" | sort -u)"
-
-  echo "${merged_array[@]}"
+  printf '%s\n' "${merged_array[@]}" | sort -u | tr '\n' ' '
 }
 
 # Function to run a command silently with dim output in verbose mode
