@@ -4,4 +4,3 @@
 # echo "PRE-COMMIT HOOK"
 # npx pretty-quick --staged
 # npm run lint:quiet
-# npm run --silent lint:stats:preventincrease 
