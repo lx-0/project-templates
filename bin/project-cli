@@ -179,14 +179,14 @@ copy_or_merge_file() {
     case ${choice[0]} in
     1)
       msg="Skipped: $relative_source_path (from $feature)"
-      skipped_files+=("Skipped: $relative_source_path (from $feature)")
-      echo -e "${INFO_COLOR}$msg${NC}"
+      skipped_files+=("$msg")
+      echo -e "${DIM}${msg}${NC}"
       ;;
     2)
       cp "$source_file" "$target_file"
       msg="Replaced: $relative_target_path with $relative_source_path (from $feature)"
-      replaced_files+=(msg)
-      echo -e "${INFO_COLOR}$msg${NC}"
+      replaced_files+=("$msg")
+      echo -e "${DIM}${msg}${NC}"
       ;;
     3)
       if [[ "$target_file" == *.json ]]; then
@@ -196,8 +196,8 @@ copy_or_merge_file() {
         grep -Fxqf "$source_file" "$target_file" || cat "$source_file" >>"$target_file"
       fi
       msg="Merged: $relative_source_path into $relative_target_path (from $feature)"
-      merged_files+=(msg)
-      echo -e "${INFO_COLOR}$msg${NC}"
+      merged_files+=("$msg")
+      echo -e "${DIM}${msg}${NC}"
       ;;
     *)
       echo -e "${ERROR_COLOR}Invalid choice '${choice[0]}'. Skipping source file $relative_source_path.${NC}"
