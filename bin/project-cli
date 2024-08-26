@@ -40,8 +40,8 @@ contains_element() {
 
 # Function to merge two arrays and remove duplicates
 merge_arrays() {
-  local array1=$1
-  local array2=$2
+  local array1=("${!1}")
+  local array2=("${!2}")
   local merged_array=()
 
   # Merge array1 and array2, avoiding duplicates
@@ -279,7 +279,7 @@ select_features() {
     selections=("${preselected[@]}")
   else
     # Merge user selections with preselected features, avoiding duplicates
-    read -ra selections <<<"$(merge_arrays selections preselected)"
+    read -ra selections <<<"$(merge_arrays selections[@] preselected[@])"
   fi
 
   # Convert selected indices to feature names
@@ -354,7 +354,8 @@ main() {
 
   # Check for updates in the template repository
   echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
-  run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your internet connection or repository settings."
+  run_command_silently git -C "$REPO_DIR" stash || handle_error "Failed to stash changes on repository. Please check your repository settings and internet connection."
+  run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your repository settings and internet connection."
   echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
 
   # If not provided via arguments, ask for template and project name
@@ -402,7 +403,7 @@ main() {
     select_features
   else
     # Merge the selected features with the enabled features from the template
-    read -ra selected_features <<<"$(merge_arrays features enabled_features)"
+    read -ra selected_features <<<"$(merge_arrays features[@] enabled_features[@])"
   fi
 
   # Integrate selected features and merge files if necessary
