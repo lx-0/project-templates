@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    // IDE AI Integration (Enable Workspace)
+    "github.copilot"
+  ]
+}
