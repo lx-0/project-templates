@@ -162,7 +162,7 @@ copy_or_merge_file() {
     local relative_target_path
     local relative_source_path
     relative_target_path=$(get_relative_path "$target_file" "$CURRENT_DIR")
-    relative_source_path=$(get_relative_path "$source_file" "$FEATURES_DIR")
+    relative_source_path=$(get_relative_path "$source_file" "$REPO_DIR")
 
     if [ -z "$CHOICE_ALL" ]; then
       # Ask user whether to skip, replace, or merge the file
