@@ -246,137 +246,140 @@ select_features() {
   done
 }
 
-# Function to display a summary of file actions
-display_file_action_summary() {
-  echo -e "\n${INFO_COLOR}Summary of file actions:${NC}"
-  if [ ${#skipped_files[@]} -gt 0 ]; then
-    echo -e "${INFO_COLOR}Skipped files:${NC}"
-    for file in "${skipped_files[@]}"; do
-      echo -e "${DIM}$file${NC}"
-    done
-  fi
+# Function to display files
+display_files() {
+  local label="$1"
+  local files=("${!2}")
 
-  if [ ${#replaced_files[@]} -gt 0 ]; then
-    echo -e "${INFO_COLOR}Replaced files:${NC}"
-    for file in "${replaced_files[@]}"; do
-      echo -e "${DIM}$file${NC}"
-    done
-  fi
-
-  if [ ${#merged_files[@]} -gt 0 ]; then
-    echo -e "${INFO_COLOR}Merged files:${NC}"
-    for file in "${merged_files[@]}"; do
+  if [ ${#files[@]} -gt 0 ]; then
+    echo -e "${INFO_COLOR}${label}:${NC}"
+    for file in "${files[@]}"; do
       echo -e "${DIM}$file${NC}"
     done
   fi
 }
 
+# Function to display a summary of file actions
+display_file_action_summary() {
+  echo -e "\n${INFO_COLOR}Summary of file actions:${NC}"
+  display_files "Skipped files" skipped_files[@]
+  display_files "Replaced files" replaced_files[@]
+  display_files "Merged files" merged_files[@]
+}
+
+# Function to parse command-line arguments
+parse_arguments() {
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+    --verbose) VERBOSE=true ;;
+    -t | --template)
+      template="$2"
+      shift
+      ;;
+    -n | --name)
+      project_name="$2"
+      shift
+      ;;
+    -f | --features)
+      features="$2"
+      shift
+      ;;
+    -h | --help)
+      echo -e "${INFO_COLOR}Usage: project-cli [--verbose] [-t template] [-n project_name] [-f features]${NC}"
+      exit 0
+      ;;
+    *) handle_error "Unknown parameter passed: $1" ;;
+    esac
+    shift
+  done
+}
+
 # Main Logic
+main() {
+  parse_arguments "$@"
 
-# Parse arguments
-while [[ "$#" -gt 0 ]]; do
-  case $1 in
-  --verbose) VERBOSE=true ;;
-  -t | --template)
-    template="$2"
-    shift
-    ;;
-  -n | --name)
-    project_name="$2"
-    shift
-    ;;
-  -f | --features)
-    features="$2"
-    shift
-    ;;
-  -h | --help)
-    echo -e "${INFO_COLOR}Usage: project-cli [--verbose] [-t template] [-n project_name] [-f features]${NC}"
-    exit 0
-    ;;
-  *) handle_error "Unknown parameter passed: $1" ;;
-  esac
-  shift
-done
+  # Check for updates in the template repository
+  echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
+  run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your internet connection or repository settings."
+  echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
 
-# Check for updates in the template repository
-echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
-run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your internet connection or repository settings."
-echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
+  # If not provided via arguments, ask for template and project name
+  if [ -z "$template" ]; then
+    select_template
+  fi
 
-# If not provided via arguments, ask for template and project name
-if [ -z "$template" ]; then
-  select_template
-fi
+  # Path to the template configuration file
+  template_config_file="$TEMPLATES_DIR/$template/project-cli.json"
 
-# Path to the template configuration file
-template_config_file="$TEMPLATES_DIR/$template/project-cli.json"
+  # Initialize an array for enabled features
+  enabled_features=()
 
-# Initialize an array for enabled features
-enabled_features=()
+  # Check if the project-cli.json file exists and read it
+  if [ -f "$template_config_file" ]; then
+    echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
+    enabled_features=($(jq -r '.features[]' "$template_config_file"))
+  fi
 
-# Check if the project-cli.json file exists and read it
-if [ -f "$template_config_file" ]; then
-  echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
-  enabled_features=($(jq -r '.features[]' "$template_config_file"))
-fi
+  if [ -z "$project_name" ]; then
+    while true; do
+      printf "${PROMPT_COLOR}Enter the name of the new project:${NC} "
+      read project_name
 
-if [ -z "$project_name" ]; then
-  while true; do
-    printf "${PROMPT_COLOR}Enter the name of the new project:${NC} "
-    read project_name
+      validate_project_name "$project_name"
 
+      if [ $? -eq 0 ]; then
+        break
+      fi
+    done
+  else
     validate_project_name "$project_name"
+  fi
 
-    if [ $? -eq 0 ]; then
-      break
+  # Create the project directory in the current directory
+  CURRENT_DIR=$(pwd)
+  if [ -d "$TEMPLATES_DIR/$template" ]; then
+    # Use rsync to copy the template files to the project directory, excluding project-cli.json
+    run_command_silently rsync -av --exclude='project-cli.json' "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name/" || handle_error "Failed to create the project directory."
+    echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
+  else
+    handle_error "Template '$template' not found."
+  fi
+
+  # If not provided via arguments, ask for features interactively
+  if [ -z "$features" ]; then
+    select_features
+  else
+    IFS=',' read -ra selected_features <<<"$features"
+
+    # Merge the selected features with the enabled features from the template, avoiding duplicates
+    selected_features=("${selected_features[@]}" "${enabled_features[@]}")
+    selected_features=($(echo "${selected_features[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+  fi
+
+  # Integrate selected features and merge files if necessary
+  for feature in "${selected_features[@]}"; do
+    FEATURE_PATH="$FEATURES_DIR/$feature"
+    if [ -d "$FEATURE_PATH" ]; then
+      echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
+      while IFS= read -r -d '' file; do
+        # Calculate the relative path of the file within the feature directory
+        relative_path="${file#$FEATURE_PATH/}"
+
+        # Set the target file path by appending the relative path to the project directory
+        target_file="$CURRENT_DIR/$project_name/$relative_path"
+
+        # Call merge_file with the full source and target file paths
+        merge_file "$file" "$target_file" "$feature"
+      done < <(find "$FEATURE_PATH" -type f -print0)
+    else
+      echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
     fi
   done
-else
-  validate_project_name "$project_name"
-fi
 
-# Create the project directory in the current directory
-CURRENT_DIR=$(pwd)
-if [ -d "$TEMPLATES_DIR/$template" ]; then
-  # Use rsync to copy the template files to the project directory, excluding project-cli.json
-  run_command_silently rsync -av --exclude='project-cli.json' "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name/" || handle_error "Failed to create the project directory."
-  echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
-else
-  handle_error "Template '$template' not found."
-fi
+  # Display a summary of file actions
+  display_file_action_summary
 
-# If not provided via arguments, ask for features interactively
-if [ -z "$features" ]; then
-  select_features
-else
-  IFS=',' read -ra selected_features <<<"$features"
+  echo -e "\n${PROMPT_COLOR}Project setup for '$project_name' complete.${NC}\n"
+}
 
-  # Merge the selected features with the enabled features from the template, avoiding duplicates
-  selected_features=("${selected_features[@]}" "${enabled_features[@]}")
-  selected_features=($(echo "${selected_features[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-fi
-
-# Integrate selected features and merge files if necessary
-for feature in "${selected_features[@]}"; do
-  FEATURE_PATH="$FEATURES_DIR/$feature"
-  if [ -d "$FEATURE_PATH" ]; then
-    echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
-    while IFS= read -r -d '' file; do
-      # Calculate the relative path of the file within the feature directory
-      relative_path="${file#$FEATURE_PATH/}"
-
-      # Set the target file path by appending the relative path to the project directory
-      target_file="$CURRENT_DIR/$project_name/$relative_path"
-
-      # Call merge_file with the full source and target file paths
-      merge_file "$file" "$target_file" "$feature"
-    done < <(find "$FEATURE_PATH" -type f -print0)
-  else
-    echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
-  fi
-done
-
-# Display a summary of file actions
-display_file_action_summary
-
-echo -e "\n${PROMPT_COLOR}Project setup for '$project_name' complete.${NC}\n"
+main "$@"
