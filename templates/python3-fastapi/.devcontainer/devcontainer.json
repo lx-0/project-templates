@@ -1,0 +1,5 @@
+// Custom devcontainer.json file for Python: FastAPI
+{
+  "name": "Python: FastAPI",
+  "dockerComposeFile": "./docker-compose.yml"
+}
