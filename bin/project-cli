@@ -357,7 +357,7 @@ create_project() {
       copy_base_template "$child_base_template" "$project_name"
     fi
 
-    show_info "Copying base template '$base_template'..."
+    show_info "\nCopying base template '$base_template'..."
     if [ -d "$TEMPLATES_DIR/$base_template" ]; then
       copy_and_merge_files "$TEMPLATES_DIR/$base_template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
     else
@@ -464,7 +464,7 @@ select_features() {
     echo "${preselected[*]}"
   )
 
-  show_prompt "Enter the numbers of the additional features you want to integrate (space-separated): [${preselected_string}] " false >"$terminal"
+  show_prompt "\nEnter the numbers of the additional features you want to integrate (space-separated): [${preselected_string}] " false >"$terminal"
   read -ra selections
 
   # If the user just hits enter, use the preselected features
