@@ -145,18 +145,17 @@ merge_file() {
 
         # Merge JSON files, concatenating arrays instead of overwriting them
         jq -s '
-          def deepmerge(old; new):
-            reduce (keys_unsorted | .[]) as $key
-            (old;
-              .[$key] =
-                if (old[$key] | type) == "object" and (new[$key] | type) == "object" then
-                  deepmerge(old[$key]; new[$key])
-                elif (old[$key] | type) == "array" and (new[$key] | type) == "array" then
-                  old[$key] + new[$key]
-                else
-                  new[$key]
-                end
-            );
+          def deepmerge(a; b):
+            if (a | type) == "object" and (b | type) == "object" then
+              reduce (b | to_entries[]) as $item (a;
+                .[$item.key] = if .[$item.key] == null then $item.value
+                               else deepmerge(.[$item.key]; $item.value)
+                               end)
+            elif (a | type) == "array" and (b | type) == "array" then
+              a + b
+            else
+              b
+            end;
           deepmerge(.[0]; .[1])' "$target_file.stripped" "$source_file.stripped" >"$target_file.tmp" && mv "$target_file.tmp" "$target_file"
 
         # Clean up temporary files
