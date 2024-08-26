@@ -16,11 +16,6 @@ ERROR_COLOR='\033[0;31m'  # Red for errors
 DIM='\033[2m'
 NC='\033[0m' # No color
 
-# Arrays to keep track of file actions
-skipped_files=()
-merged_files=()
-replaced_files=()
-
 # Global state variable for user choice
 CHOICE_ALL=6
 
@@ -41,6 +36,19 @@ contains_element() {
     fi
   done
   return 1 # Element not found, return failure
+}
+
+# Function to merge two arrays and remove duplicates
+merge_arrays() {
+  local array1=("$1")
+  local array2=("$2")
+  local merged_array=()
+
+  # Merge array1 and array2, avoiding duplicates
+  merged_array=("${array1[@]}" "${array2[@]}")
+  read -ra merged_array <<<"$(printf '%s\n' "${merged_array[@]}" | sort -u)"
+
+  echo "${merged_array[@]}"
 }
 
 # Function to run a command silently with dim output in verbose mode
@@ -166,7 +174,7 @@ merge_file() {
       choice[0]=$CHOICE_ALL
     fi
 
-    case $choice in
+    case ${choice[0]} in
     4)
       CHOICE_ALL=1
       choice[0]=1
@@ -181,7 +189,7 @@ merge_file() {
       ;;
     esac
 
-    case $choice in
+    case ${choice[0]} in
     1)
       echo -e "${INFO_COLOR}Skipping source file $relative_source_path...${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature)")
@@ -204,7 +212,7 @@ merge_file() {
       merged_files+=("Merged: $relative_source_path into $relative_target_path (from $feature)")
       ;;
     *)
-      echo -e "${ERROR_COLOR}Invalid choice '$choice'. Skipping source file $relative_source_path.${NC}"
+      echo -e "${ERROR_COLOR}Invalid choice '${choice[0]}'. Skipping source file $relative_source_path.${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
@@ -270,7 +278,7 @@ select_features() {
   else
     # Merge user selections with preselected features, avoiding duplicates
     selections=("${selections[@]}" "${preselected[@]}")
-    selections=($(echo "${selections[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    read -ra selections <<<"$(echo "${selections[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
   fi
 
   # Convert selected indices to feature names
@@ -332,6 +340,11 @@ parse_arguments() {
   done
 }
 
+# Arrays to keep track of file actions
+skipped_files=()
+merged_files=()
+replaced_files=()
+
 # Main Logic
 main() {
   CURRENT_DIR=$(pwd)
@@ -357,7 +370,7 @@ main() {
   # Check if the project-cli.json file exists and read it
   if [ -f "$template_config_file" ]; then
     echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
-    enabled_features=($(jq -r '.features[]' "$template_config_file"))
+    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file")"
   fi
 
   if [ -z "$project_name" ]; then
@@ -388,11 +401,11 @@ main() {
   if [ -z "$features" ]; then
     select_features
   else
+
     IFS=',' read -ra selected_features <<<"$features"
 
-    # Merge the selected features with the enabled features from the template, avoiding duplicates
-    selected_features=("${selected_features[@]}" "${enabled_features[@]}")
-    selected_features=($(echo "${selected_features[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    # Merge the selected features with the enabled features from the template
+    read -ra selected_features <<<"$(merge_arrays "${selected_features[@]}" "${enabled_features[@]}")"
   fi
 
   # Integrate selected features and merge files if necessary
