@@ -1,0 +1,5 @@
+{
+  "baseProject": "node-typescript",
+  "features": [],
+  // "postInstall": "npm i -g @nestjs/cli && nest new project-name --strict" // TODO replace PROJECT_NAME
+}
