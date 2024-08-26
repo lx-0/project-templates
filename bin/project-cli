@@ -5,9 +5,11 @@ REPO_DIR="$HOME/.project-templates"
 TEMPLATES_DIR="$REPO_DIR/templates"
 FEATURES_DIR="$REPO_DIR/features"
 VERBOSE=false
+PROJECT_CLI_CONFIG_FILE="project-cli.json"
 
 # List of filenames to ignore during the copy process
-IGNORED_FILES=("README.md" "LICENSE")
+IGNORED_FILES_TEMPLATE=("LICENSE" $PROJECT_CLI_CONFIG_FILE)
+IGNORED_FILES_FEATURE=("README.md" "LICENSE")
 
 # Color codes for output
 INFO_COLOR='\033[0;34m'   # Blue for informational messages
@@ -66,18 +68,11 @@ run_command_silently() {
   return $status
 }
 
-# Function to validate project name (kebab-case)
-validate_project_name() {
-  if [[ ! "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-    handle_error "Invalid project name. The project name must be in kebab-case (e.g., my-project-name)."
-  fi
-}
-
 # Function to convert absolute path to relative path from given base directory
 get_relative_path() {
   local file_path="$1"
   local base_dir="$2"
-  local relative_path="${file_path#$base_dir/}"
+  local relative_path="${file_path#"$base_dir"/}"
   echo "$relative_path"
 }
 
@@ -125,21 +120,13 @@ merge_json_files() {
 }
 
 # Function to merge files if they already exist
-merge_file() {
+copy_or_merge_file() {
   local source_file="$1"
   local target_file="$2"
   local feature="$3"
 
-  local filename
-  filename=$(basename "$source_file")
   local target_dir
   target_dir=$(dirname "$target_file")
-
-  # Check if the file is in the ignored list
-  if contains_element IGNORED_FILES[@] "$filename"; then
-    echo -e "${DIM}Ignoring $filename as it is in the ignored files list.${NC}"
-    return
-  fi
 
   # Ensure the target directory exists
   if [ ! -d "$target_dir" ]; then
@@ -191,31 +178,136 @@ merge_file() {
 
     case ${choice[0]} in
     1)
-      echo -e "${INFO_COLOR}Skipping source file $relative_source_path...${NC}"
+      msg="Skipped: $relative_source_path (from $feature)"
       skipped_files+=("Skipped: $relative_source_path (from $feature)")
+      echo -e "${INFO_COLOR}$msg${NC}"
       ;;
     2)
-      echo -e "${INFO_COLOR}Replacing $relative_target_path with $relative_source_path...${NC}"
       cp "$source_file" "$target_file"
-      replaced_files+=("Replaced: $relative_target_path with $relative_source_path (from $feature)")
+      msg="Replaced: $relative_target_path with $relative_source_path (from $feature)"
+      replaced_files+=(msg)
+      echo -e "${INFO_COLOR}$msg${NC}"
       ;;
     3)
-      echo -e "${INFO_COLOR}Merging $relative_source_path into $relative_target_path...${NC}"
       if [[ "$target_file" == *.json ]]; then
-
-        # Call the merge_json_files function
         merge_json_files "$target_file" "$source_file"
-
       else
+        # append file
         grep -Fxqf "$source_file" "$target_file" || cat "$source_file" >>"$target_file"
       fi
-      merged_files+=("Merged: $relative_source_path into $relative_target_path (from $feature)")
+      msg="Merged: $relative_source_path into $relative_target_path (from $feature)"
+      merged_files+=(msg)
+      echo -e "${INFO_COLOR}$msg${NC}"
       ;;
     *)
       echo -e "${ERROR_COLOR}Invalid choice '${choice[0]}'. Skipping source file $relative_source_path.${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
+  fi
+}
+
+# Function to copy and potentially merge files
+copy_and_merge_files() {
+  local source_dir="$1"
+  local target_dir="$2"
+  local ignored_files=("${!3}")
+
+  while IFS= read -r -d '' file; do
+    # Calculate the relative path of the file within the source directory
+    relative_path="${file#"$source_dir"/}"
+    filename=$(basename "$file")
+
+    # Set the target file path by appending the relative path to the project directory
+    target_file="$target_dir/$relative_path"
+
+    # Check if the file is in the ignored list
+    if contains_element ignored_files[@] "$filename"; then
+      echo -e "${DIM}Ignoring $filename as it is in the ignored files list.${NC}"
+      continue
+    fi
+
+    # Merge the file if it already exists, otherwise just copy it
+    copy_or_merge_file "$file" "$target_file"
+  done < <(find "$source_dir" -type f -print0)
+}
+
+# Function to check for updates in the template repository
+check_template_updates() {
+  echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
+  run_command_silently git -C "$REPO_DIR" stash || handle_error "Failed to stash changes on repository. Please check your repository settings and internet connection."
+  run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your repository settings and internet connection."
+  echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
+}
+
+# Function to load template configuration
+load_template_config() {
+  # Path to the template configuration file
+  template_config_file="$TEMPLATES_DIR/$template/$PROJECT_CLI_CONFIG_FILE"
+
+  # Initialize an array for enabled features
+  enabled_features=()
+  base_template=""
+
+  # Check if the PROJECT_CLI_CONFIG_FILE file exists and read it
+  if [ -f "$template_config_file" ]; then
+    echo -e "${INFO_COLOR}Loading template configuration from ${PROJECT_CLI_CONFIG_FILE}...${NC}"
+    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file" | tr '\n' ' ')"
+    base_template=$(jq -r '.baseTemplate // empty' "$template_config_file")
+  fi
+}
+
+# Function to validate project name (kebab-case)
+validate_project_name() {
+  if [[ ! "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    handle_error "Invalid project name. The project name must be in kebab-case (e.g., my-project-name)."
+  fi
+}
+
+# Function to prompt for project name and validate it
+prompt_project_name() {
+  if [ -z "$project_name" ]; then
+    while true; do
+      echo -en "${PROMPT_COLOR}Enter the name of the new project:${NC} "
+      read -r project_name
+
+      if validate_project_name "$project_name"; then
+        break
+      fi
+    done
+  else
+    validate_project_name "$project_name"
+  fi
+}
+
+# Function to create the project directory and copy template files
+create_project() {
+  local template="$1"
+  local project_name="$2"
+
+  # Create the project directory in the current directory
+  if [ -d "$CURRENT_DIR/$project_name" ]; then
+    handle_error "Project directory '$project_name' already exists in $CURRENT_DIR."
+  fi
+
+  mkdir "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
+
+  # Copy the base template if specified
+  if [ -n "$base_template" ]; then
+    echo -e "${INFO_COLOR}Copying base template '$base_template'...${NC}"
+    if [ -d "$TEMPLATES_DIR/$base_template" ]; then
+      copy_and_merge_files "$TEMPLATES_DIR/$base_template/" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
+    else
+      handle_error "Base template '$base_template' not found."
+    fi
+  fi
+
+  # Copy the selected template files
+  if [ -d "$TEMPLATES_DIR/$template" ]; then
+    copy_and_merge_files "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
+    echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
+  else
+    handle_error "Template '$template' not found."
   fi
 }
 
@@ -291,6 +383,24 @@ select_features() {
   done
 }
 
+# Function to integrate selected features and merge files
+integrate_features() {
+  local selected_features=("$@")
+  local filename
+  local relative_path
+  local target_file
+
+  for feature in "${selected_features[@]}"; do
+    FEATURE_PATH="$FEATURES_DIR/$feature"
+    if [ -d "$FEATURE_PATH" ]; then
+      echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
+      copy_and_merge_files "$FEATURE_PATH" "$CURRENT_DIR/$project_name" IGNORED_FILES_FEATURE[@]
+    else
+      echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
+    fi
+  done
+}
+
 # Function to display files
 display_files() {
   local label="$1"
@@ -351,49 +461,21 @@ main() {
   parse_arguments "$@"
 
   # Check for updates in the template repository
-  echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
-  run_command_silently git -C "$REPO_DIR" stash || handle_error "Failed to stash changes on repository. Please check your repository settings and internet connection."
-  run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your repository settings and internet connection."
-  echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
+  check_template_updates
 
-  # If not provided via arguments, ask for template and project name
+  # If not provided via arguments, ask for template selection interactively
   if [ -z "$template" ]; then
     select_template
   fi
 
-  # Path to the template configuration file
-  template_config_file="$TEMPLATES_DIR/$template/project-cli.json"
+  # Load template configuration
+  load_template_config
 
-  # Initialize an array for enabled features
-  enabled_features=()
+  # Call the prompt_project_name function
+  prompt_project_name
 
-  # Check if the project-cli.json file exists and read it
-  if [ -f "$template_config_file" ]; then
-    echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
-    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file" | tr '\n' ' ')"
-  fi
-
-  if [ -z "$project_name" ]; then
-    while true; do
-      echo -en "${PROMPT_COLOR}Enter the name of the new project:${NC} "
-      read -r project_name
-
-      if validate_project_name "$project_name"; then
-        break
-      fi
-    done
-  else
-    validate_project_name "$project_name"
-  fi
-
-  # Create the project directory in the current directory
-  if [ -d "$TEMPLATES_DIR/$template" ]; then
-    # Use rsync to copy the template files to the project directory, excluding project-cli.json
-    run_command_silently rsync -av --exclude='project-cli.json' "$TEMPLATES_DIR/$template/" "$CURRENT_DIR/$project_name/" || handle_error "Failed to create the project directory."
-    echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
-  else
-    handle_error "Template '$template' not found."
-  fi
+  # Create the project directory and copy template files
+  create_project "$template" "$project_name"
 
   # If not provided via arguments, ask for features interactively
   selected_features=()
@@ -404,25 +486,8 @@ main() {
     read -ra selected_features <<<"$(merge_arrays features[@] enabled_features[@])"
   fi
 
-  # Integrate selected features and merge files if necessary
-  for feature in "${selected_features[@]}"; do
-    FEATURE_PATH="$FEATURES_DIR/$feature"
-    if [ -d "$FEATURE_PATH" ]; then
-      echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
-      while IFS= read -r -d '' file; do
-        # Calculate the relative path of the file within the feature directory
-        relative_path="${file#$FEATURE_PATH/}"
-
-        # Set the target file path by appending the relative path to the project directory
-        target_file="$CURRENT_DIR/$project_name/$relative_path"
-
-        # Call merge_file with the full source and target file paths
-        merge_file "$file" "$target_file" "$feature"
-      done < <(find "$FEATURE_PATH" -type f -print0)
-    else
-      echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
-    fi
-  done
+  # Call the integrate_features function with the selected features
+  integrate_features "${selected_features[@]}"
 
   # Display a summary of file actions
   display_file_action_summary
