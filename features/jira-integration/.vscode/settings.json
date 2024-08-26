@@ -13,7 +13,10 @@
     "BUG:",
     "FIXME:",
     "ISSUE:",
-    "TODO"
+    "TODO",
+    "BUG",
+    "FIXME",
+    "ISSUE"
   ],
   "atlascode.jira.jqlList": [
     {
