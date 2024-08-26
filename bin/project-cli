@@ -233,7 +233,7 @@ copy_and_merge_files() {
 }
 
 # Function to check for updates in the template repository
-check_template_updates() {
+check_repo_updates() {
   echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
   run_command_silently git -C "$REPO_DIR" stash || handle_error "Failed to stash changes on repository. Please check your repository settings and internet connection."
   run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your repository settings and internet connection."
@@ -241,22 +241,30 @@ check_template_updates() {
 }
 
 # Function to load template configuration
-load_template_config() {
-  # Path to the template configuration file
-  template_config_file="$TEMPLATES_DIR/$template/$PROJECT_CLI_CONFIG_FILE"
+get_base_template_from_template_config() {
+  local template="$1"
 
-  # Initialize an array for enabled features
-  enabled_features=()
-  base_template=""
+  # Path to the template configuration file
+  local template_config_file="$TEMPLATES_DIR/$template/$PROJECT_CLI_CONFIG_FILE"
 
   # Check if the PROJECT_CLI_CONFIG_FILE file exists and read it
   if [ -f "$template_config_file" ]; then
-    echo -e "${INFO_COLOR}Loading template configuration from ${PROJECT_CLI_CONFIG_FILE}...${NC}"
-    sed -E 's|//.*$||g; s|/\*.*\*/||g' "$template_config_file" >"$template_config_file.stripped"
-    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file.stripped" | tr '\n' ' ')"
-    base_template=$(jq -r '.baseTemplate' "$template_config_file.stripped")
-    # Clean up temporary files
-    rm -f "$template_config_file.stripped"
+    sed -E 's|//.*$||g; s|/\*.*\*/||g' "$template_config_file" | jq -r '.baseTemplate // ""'
+  fi
+}
+
+# Function to load template configuration
+get_enabled_features_from_template_config() {
+  local template="$1"
+  local enabled_features=()
+
+  # Path to the template configuration file
+  local template_config_file="$TEMPLATES_DIR/$template/$PROJECT_CLI_CONFIG_FILE"
+
+  # Check if the PROJECT_CLI_CONFIG_FILE file exists and read it
+  if [ -f "$template_config_file" ]; then
+    read -ra enabled_features <<<"$(sed -E 's|//.*$||g; s|/\*.*\*/||g' "$template_config_file" | jq -r '.features[]' | tr '\n' ' ')"
+    echo "${enabled_features[@]}"
   fi
 }
 
@@ -287,6 +295,7 @@ prompt_project_name() {
 create_project() {
   local template="$1"
   local project_name="$2"
+  local base_template
 
   # Create the project directory in the current directory
   if [ -d "$CURRENT_DIR/$project_name" ]; then
@@ -295,16 +304,31 @@ create_project() {
 
   mkdir "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
 
-  # Copy the base template if specified
-  if [ -n "$base_template" ]; then
+  # Function to copy the base template
+  copy_base_template() {
+    local base_template="$1"
+    local project_name="$2"
+    local child_base_template
+
+    # copy recursively `baseTemplate` of `baseTemplate` until `baseTemplate` is empty
+    child_base_template=$(get_base_template_from_template_config "$base_template")
+    if [ -n "$child_base_template" ]; then
+      copy_base_template "$child_base_template" "$project_name"
+    fi
+
     echo -e "${INFO_COLOR}Copying base template '$base_template'...${NC}"
     if [ -d "$TEMPLATES_DIR/$base_template" ]; then
       copy_and_merge_files "$TEMPLATES_DIR/$base_template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
     else
       handle_error "Base template '$base_template' not found."
     fi
+  }
+
+  # Copy the base template if specified
+  base_template=$(get_base_template_from_template_config "$template")
+  if [ -n "$base_template" ]; then
+    copy_base_template "$base_template" "$project_name"
   fi
-  # ! TODO add features from baseTemplate to enabled_features
 
   # Copy the selected template files
   if [ -d "$TEMPLATES_DIR/$template" ]; then
@@ -317,6 +341,11 @@ create_project() {
 
 # Interactive template selection
 select_template() {
+  local template
+  local templates
+  local index
+  local template_index
+
   echo -e "\n${INFO_COLOR}Available project templates:${NC}"
   templates=()
   index=1
@@ -334,15 +363,39 @@ select_template() {
   if [ -z "$template" ]; then
     handle_error "Invalid selection. Exiting."
   fi
+
+  echo "$template"
+}
+
+# Function to enable features from the template
+enable_features_from_template() {
+  local enabled_features=("${!1}")
+  local template="$2"
+  local template_enabled_features
+  local base_template
+
+  # merge `features` from `template` with `enabled_features`
+  read -ra template_enabled_features <<<"$(get_enabled_features_from_template_config "$template")"
+  read -ra enabled_features <<<"$(merge_arrays enabled_features[@] template_enabled_features[@])"
+
+  # copy recursively `baseTemplate` of `template` until `baseTemplate` is empty
+  base_template=$(get_base_template_from_template_config "$template")
+  if [ -n "$base_template" ]; then
+    read -ra enabled_features <<<"$(enable_features_from_template enabled_features[@] "$base_template")"
+  fi
+
+  echo "${enabled_features[@]}"
 }
 
 # Interactive feature selection
 select_features() {
-  echo -e "\n${INFO_COLOR}Available features:${NC}"
-  features=()
-  preselected=()
+  local enabled_features=("${!1}")
+  local feature
+  local features=()
+  local preselected=()
 
   index=1
+  echo -e "\n${INFO_COLOR}Available features:${NC}"
   for dir in "$FEATURES_DIR"/*/; do
     feature=$(basename "$dir")
 
@@ -371,20 +424,18 @@ select_features() {
   # If the user just hits enter, use the preselected features
   if [ -z "${selections[*]}" ]; then
     selections=("${preselected[@]}")
-  else
-    # Merge user selections with preselected features, avoiding duplicates
-    read -ra selections <<<"$(merge_arrays selections[@] preselected[@])"
   fi
 
   # Convert selected indices to feature names
-  selected_features=()
   for i in "${selections[@]}"; do
     if [[ "$i" =~ ^[0-9]+$ ]] && ((i >= 1 && i <= ${#features[@]})); then
-      selected_features+=("${features[$((i - 1))]}")
+      enabled_features+=("${features[$((i - 1))]}")
     else
       echo -e "${ERROR_COLOR}Invalid selection: $i${NC}"
     fi
   done
+
+  echo "${enabled_features[@]}"
 }
 
 # Function to integrate selected features and merge files
@@ -462,18 +513,20 @@ replaced_files=()
 main() {
   CURRENT_DIR=$(pwd)
 
+  # TODO do not use globals: return `template`, `project_name` and `features` from `parse_arguments`
   parse_arguments "$@"
 
   # Check for updates in the template repository
-  check_template_updates
+  check_repo_updates
 
   # If not provided via arguments, ask for template selection interactively
   if [ -z "$template" ]; then
-    select_template
+    template=$(select_template "$template")
   fi
 
-  # Load template configuration
-  load_template_config
+  # Enable features defined in template configuration
+  enabled_features=()
+  read -ra enabled_features <<<"$(enable_features_from_template enabled_features[@] "$template")"
 
   # Call the prompt_project_name function
   prompt_project_name
@@ -481,17 +534,16 @@ main() {
   # Create the project directory and copy template files
   create_project "$template" "$project_name"
 
-  # If not provided via arguments, ask for features interactively
-  selected_features=()
-  if [ -z "${features[0]}" ]; then
-    select_features
+  # Merge the param features with the enabled features from the template
+  if [ -n "${features[0]}" ]; then
+    read -ra enabled_features <<<"$(merge_arrays features[@] enabled_features[@])"
   else
-    # Merge the selected features with the enabled features from the template
-    read -ra selected_features <<<"$(merge_arrays features[@] enabled_features[@])"
+    # If no features are provided via arguments, ask for features interactively
+    read -ra enabled_features <<<"$(select_features enabled_features[@])"
   fi
 
   # Call the integrate_features function with the selected features
-  integrate_features "${selected_features[@]}"
+  integrate_features "${enabled_features[@]}"
 
   # Display a summary of file actions
   display_file_action_summary
