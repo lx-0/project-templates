@@ -40,8 +40,8 @@ contains_element() {
 
 # Function to merge two arrays and remove duplicates
 merge_arrays() {
-  local array1=("$1")
-  local array2=("$2")
+  local array1=$1
+  local array2=$2
   local merged_array=()
 
   # Merge array1 and array2, avoiding duplicates
@@ -132,12 +132,14 @@ merge_file() {
   local target_file="$2"
   local feature="$3"
 
-  local filename=$(basename "$source_file")
-  local target_dir=$(dirname "$target_file")
+  local filename
+  filename=$(basename "$source_file")
+  local target_dir
+  target_dir=$(dirname "$target_file")
 
   # Check if the file is in the ignored list
   if contains_element IGNORED_FILES[@] "$filename"; then
-    echo -e "${INFO_COLOR}Ignoring $filename as it is in the ignored files list.${NC}"
+    echo -e "${DIM}Ignoring $filename as it is in the ignored files list.${NC}"
     return
   fi
 
@@ -277,8 +279,7 @@ select_features() {
     selections=("${preselected[@]}")
   else
     # Merge user selections with preselected features, avoiding duplicates
-    selections=("${selections[@]}" "${preselected[@]}")
-    read -ra selections <<<"$(echo "${selections[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+    read -ra selections <<<"$(merge_arrays selections preselected)"
   fi
 
   # Convert selected indices to feature names
@@ -327,7 +328,7 @@ parse_arguments() {
       shift
       ;;
     -f | --features)
-      features="$2"
+      IFS=',' read -ra features <<<"$2"
       shift
       ;;
     -h | --help)
@@ -370,7 +371,7 @@ main() {
   # Check if the project-cli.json file exists and read it
   if [ -f "$template_config_file" ]; then
     echo -e "${INFO_COLOR}Loading template configuration from project-cli.json...${NC}"
-    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file")"
+    read -ra enabled_features <<<"$(jq -r '.features[]' "$template_config_file" | tr '\n' ' ')"
   fi
 
   if [ -z "$project_name" ]; then
@@ -378,9 +379,7 @@ main() {
       echo -en "${PROMPT_COLOR}Enter the name of the new project:${NC} "
       read -r project_name
 
-      validate_project_name "$project_name"
-
-      if [ $? -eq 0 ]; then
+      if validate_project_name "$project_name"; then
         break
       fi
     done
@@ -398,14 +397,12 @@ main() {
   fi
 
   # If not provided via arguments, ask for features interactively
-  if [ -z "$features" ]; then
+  selected_features=()
+  if [ -z "${features[0]}" ]; then
     select_features
   else
-
-    IFS=',' read -ra selected_features <<<"$features"
-
     # Merge the selected features with the enabled features from the template
-    read -ra selected_features <<<"$(merge_arrays "${selected_features[@]}" "${enabled_features[@]}")"
+    read -ra selected_features <<<"$(merge_arrays features enabled_features)"
   fi
 
   # Integrate selected features and merge files if necessary
