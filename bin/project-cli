@@ -12,19 +12,42 @@ IGNORED_FILES_TEMPLATE=("LICENSE" $PROJECT_CLI_CONFIG_FILE)
 IGNORED_FILES_FEATURE=("README.md" "LICENSE")
 
 # Color codes for output
-INFO_COLOR='\033[0;34m'   # Blue for informational messages
-PROMPT_COLOR='\033[0;32m' # Green for prompts
-ERROR_COLOR='\033[0;31m'  # Red for errors
-DIM='\033[2m'
-NC='\033[0m' # No color
+INFO_COLOR='\033[0;34m'      # Blue for informational messages
+PROMPT_COLOR='\033[0;32m'    # Green for prompts
+HIGHLIGHT_COLOR='\033[0;33m' # Green for highlights
+ERROR_COLOR='\033[0;31m'     # Red for errors
+DIM='\033[2m'                # Dimmed text for secondary information
+NC='\033[0m'                 # No color
 
 # Global state variable for user choice
 CHOICE_ALL=6
 
+show_error() {
+  echo -e "${ERROR_COLOR}Error: $1${NC}"
+}
+
+show_info() {
+  echo -e "${INFO_COLOR}$1${NC}"
+}
+
+show_dim() {
+  echo -e "${DIM}$1${NC}"
+}
+
+show_prompt() {
+  echo -en "${PROMPT_COLOR}$1${NC}"
+  if [ "${2:-true}" = true ]; then
+    echo ""
+  fi
+}
+
+show_highlight() {
+  echo -e "${HIGHLIGHT_COLOR}$1${NC}"
+}
+
 # Function to handle errors with detailed output
 handle_error() {
-  echo -e "${ERROR_COLOR}Error: $1${NC}"
-  [ -n "$2" ] && echo -e "${ERROR_COLOR}$2${NC}"
+  show_error "$1"
   exit 1
 }
 
@@ -58,11 +81,11 @@ run_command_silently() {
   local status=$?
 
   if [ "$VERBOSE" = true ]; then
-    echo -e "${DIM}${output}${NC}"
+    show_dim "$output"
   fi
 
   if [ $status -ne 0 ]; then
-    handle_error "Failed to run the command: $*" "$output"
+    handle_error "Failed to run the command: $*\n$output"
   fi
 
   return $status
@@ -143,14 +166,14 @@ copy_or_merge_file() {
 
     if [ -z "$CHOICE_ALL" ]; then
       # Ask user whether to skip, replace, or merge the file
-      echo -e "\n${PROMPT_COLOR}File $relative_target_path already exists. Choose an option:${NC}"
-      echo -e "${PROMPT_COLOR}1) Skip${NC}"
-      echo -e "${PROMPT_COLOR}2) Replace${NC}"
-      echo -e "${PROMPT_COLOR}3) Merge${NC}"
-      echo -e "${PROMPT_COLOR}4) Skip All${NC}"
-      echo -e "${PROMPT_COLOR}5) Replace All${NC}"
-      echo -e "${PROMPT_COLOR}6) Merge All (default)${NC}"
-      echo -en "\n${PROMPT_COLOR}Enter your choice (1/2/3/4/5/6):${NC} "
+      show_prompt "\nFile $relative_target_path already exists. Choose an option:"
+      show_prompt "1) Skip"
+      show_prompt "2) Replace"
+      show_prompt "3) Merge"
+      show_prompt "4) Skip All"
+      show_prompt "5) Replace All"
+      show_prompt "6) Merge All (default)"
+      show_prompt "\nEnter your choice (1/2/3/4/5/6): " false
       read -ra choice </dev/tty
 
       # If no input is given (i.e., user hits enter), default to "6) Merge All"
@@ -180,13 +203,13 @@ copy_or_merge_file() {
     1)
       msg="Skipped: $relative_source_path (from $feature)"
       skipped_files+=("$msg")
-      echo -e "${DIM}${msg}${NC}"
+      show_dim "$msg"
       ;;
     2)
       cp "$source_file" "$target_file"
       msg="Replaced: $relative_target_path with $relative_source_path (from $feature)"
       replaced_files+=("$msg")
-      echo -e "${DIM}${msg}${NC}"
+      show_dim "$msg"
       ;;
     3)
       if [[ "$target_file" == *.json ]]; then
@@ -197,10 +220,10 @@ copy_or_merge_file() {
       fi
       msg="Merged: $relative_source_path into $relative_target_path (from $feature)"
       merged_files+=("$msg")
-      echo -e "${DIM}${msg}${NC}"
+      show_dim "$msg"
       ;;
     *)
-      echo -e "${ERROR_COLOR}Invalid choice '${choice[0]}'. Skipping source file $relative_source_path.${NC}"
+      show_error "Invalid choice '${choice[0]}'. Skipping source file $relative_source_path."
       skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
@@ -223,7 +246,7 @@ copy_and_merge_files() {
 
     # Check if the file is in the ignored list
     if contains_element ignored_files[@] "$filename"; then
-      echo -e "${DIM}Ignoring $filename as it is in the ignored files list.${NC}"
+      show_dim "Ignoring $filename as it is in the ignored files list."
       continue
     fi
 
@@ -234,10 +257,10 @@ copy_and_merge_files() {
 
 # Function to check for updates in the template repository
 check_repo_updates() {
-  echo -e "${INFO_COLOR}Checking for updates in the template repository...${NC}"
+  show_info "Checking for updates in the template repository..."
   run_command_silently git -C "$REPO_DIR" stash || handle_error "Failed to stash changes on repository. Please check your repository settings and internet connection."
   run_command_silently git -C "$REPO_DIR" pull || handle_error "Failed to update the repository. Please check your repository settings and internet connection."
-  echo -e "${INFO_COLOR}Templates updated successfully.${NC}"
+  show_info "Templates updated successfully."
 }
 
 # Function to load template configuration
@@ -270,24 +293,43 @@ get_enabled_features_from_template_config() {
 
 # Function to validate project name (kebab-case)
 validate_project_name() {
-  if [[ ! "$1" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-    handle_error "Invalid project name. The project name must be in kebab-case (e.g., my-project-name)."
+  local project_name="$1"
+  if [[ ! "$project_name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    echo 1
+  fi
+}
+
+# Function to check the new project directory
+check_project_directory_is_available() {
+  local project_name="$1"
+
+  if [ -d "$CURRENT_DIR/$project_name" ]; then
+    echo 1
   fi
 }
 
 # Function to prompt for project name and validate it
 prompt_project_name() {
+  # TODO do not use globals: receive and return `project_name`
   if [ -z "$project_name" ]; then
     while true; do
-      echo -en "${PROMPT_COLOR}Enter the name of the new project:${NC} "
+      show_prompt "Enter the name of the new project: " false
       read -r project_name
 
-      if validate_project_name "$project_name"; then
-        break
+      if [[ -n "$(validate_project_name "$project_name")" ]]; then
+        show_error "Invalid project name '$project_name'. The project name must be in kebab-case (e.g., my-project-name)."
+        continue
       fi
+      if [[ -n "$(check_project_directory_is_available "$project_name")" ]]; then
+        show_error "Project directory '$project_name' already exists in $CURRENT_DIR."
+        continue
+      fi
+      break
     done
-  else
-    validate_project_name "$project_name"
+  elif [[ -n "$(validate_project_name "$project_name")" ]]; then
+    handle_error "Invalid project name '$project_name'. The project name must be in kebab-case (e.g., my-project-name)."
+  elif [[ -n "$(check_project_directory_is_available "$project_name")" ]]; then
+    handle_error "Project directory '$project_name' already exists in $CURRENT_DIR."
   fi
 }
 
@@ -298,10 +340,9 @@ create_project() {
   local base_template
 
   # Create the project directory in the current directory
-  if [ -d "$CURRENT_DIR/$project_name" ]; then
+  if ! check_project_directory_is_available "$project_name"; then
     handle_error "Project directory '$project_name' already exists in $CURRENT_DIR."
   fi
-
   mkdir "$CURRENT_DIR/$project_name" || handle_error "Failed to create the project directory."
 
   # Function to copy the base template
@@ -316,7 +357,7 @@ create_project() {
       copy_base_template "$child_base_template" "$project_name"
     fi
 
-    echo -e "${INFO_COLOR}Copying base template '$base_template'...${NC}"
+    show_info "Copying base template '$base_template'..."
     if [ -d "$TEMPLATES_DIR/$base_template" ]; then
       copy_and_merge_files "$TEMPLATES_DIR/$base_template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
     else
@@ -333,7 +374,7 @@ create_project() {
   # Copy the selected template files
   if [ -d "$TEMPLATES_DIR/$template" ]; then
     copy_and_merge_files "$TEMPLATES_DIR/$template" "$CURRENT_DIR/$project_name" IGNORED_FILES_TEMPLATE[@]
-    echo -e "\n${INFO_COLOR}Project '$project_name' created based on template '$template' in $CURRENT_DIR.${NC}"
+    show_info "\nProject '$project_name' created based on template '$template' in $CURRENT_DIR."
   else
     handle_error "Template '$template' not found."
   fi
@@ -342,26 +383,28 @@ create_project() {
 # Interactive template selection
 select_template() {
   local template
-  local templates
-  local index
+  local templates=()
+  local index=1
   local template_index
+  local terminal
 
-  echo -e "\n${INFO_COLOR}Available project templates:${NC}"
-  templates=()
-  index=1
+  # Get the terminal device
+  terminal=$(tty)
+
+  show_info "\nAvailable project templates:" >"$terminal"
   for dir in "$TEMPLATES_DIR"/*/; do
     template=$(basename "$dir")
-    echo -e "${INFO_COLOR}$index) $template${NC}"
+    show_info "$index) $template" >"$terminal"
     templates+=("$template")
     index=$((index + 1))
   done
 
-  echo -en "\n${PROMPT_COLOR}Select a project template by number:${NC} "
+  show_prompt "\nSelect a project template by number: " false >"$terminal"
   read -r template_index
   template="${templates[$((template_index - 1))]}"
 
   if [ -z "$template" ]; then
-    handle_error "Invalid selection. Exiting."
+    handle_error "Invalid selection. Exiting." >"$terminal"
   fi
 
   echo "$template"
@@ -393,24 +436,27 @@ select_features() {
   local feature
   local features=()
   local preselected=()
+  local terminal
+
+  terminal=$(tty)
 
   index=1
-  echo -e "\n${INFO_COLOR}Available features:${NC}"
+  show_info "\nAvailable features:" >"$terminal"
   for dir in "$FEATURES_DIR"/*/; do
     feature=$(basename "$dir")
 
     # Check if this feature is preselected in the template configuration
     if contains_element enabled_features[@] "$feature"; then
-      echo -e "${INFO_COLOR}$index) $feature *${NC}"
+      show_info "$index) $feature *" >"$terminal"
       preselected+=("$index")
     else
-      echo -e "${INFO_COLOR}$index) $feature${NC}"
+      show_info "$index) $feature" >"$terminal"
     fi
 
     features+=("$feature")
     index=$((index + 1))
   done
-  echo -e "${INFO_COLOR}    (* preselected by template)${NC}"
+  show_info "    (* preselected by template)" >"$terminal"
 
   # Convert preselected indices to space-separated string
   preselected_string=$(
@@ -418,7 +464,7 @@ select_features() {
     echo "${preselected[*]}"
   )
 
-  echo -en "${PROMPT_COLOR}Enter the numbers of the additional features you want to integrate (space-separated):${NC} [${preselected_string}] "
+  show_prompt "Enter the numbers of the additional features you want to integrate (space-separated): [${preselected_string}] " false >"$terminal"
   read -ra selections
 
   # If the user just hits enter, use the preselected features
@@ -431,7 +477,7 @@ select_features() {
     if [[ "$i" =~ ^[0-9]+$ ]] && ((i >= 1 && i <= ${#features[@]})); then
       enabled_features+=("${features[$((i - 1))]}")
     else
-      echo -e "${ERROR_COLOR}Invalid selection: $i${NC}"
+      handle_error "Invalid selection: $i" >"$terminal"
     fi
   done
 
@@ -448,10 +494,10 @@ integrate_features() {
   for feature in "${selected_features[@]}"; do
     FEATURE_PATH="$FEATURES_DIR/$feature"
     if [ -d "$FEATURE_PATH" ]; then
-      echo -e "\n${INFO_COLOR}Integrating $feature...${NC}"
+      show_info "\nIntegrating feature '$feature'..."
       copy_and_merge_files "$FEATURE_PATH" "$CURRENT_DIR/$project_name" IGNORED_FILES_FEATURE[@]
     else
-      echo -e "${ERROR_COLOR}Feature $feature not found.${NC}"
+      handle_error "Feature $feature not found."
     fi
   done
 }
@@ -462,16 +508,16 @@ display_files() {
   local files=("${!2}")
 
   if [ ${#files[@]} -gt 0 ]; then
-    echo -e "${INFO_COLOR}${label}:${NC}"
+    show_info "${label}:"
     for file in "${files[@]}"; do
-      echo -e "${DIM}$file${NC}"
+      show_dim "$file"
     done
   fi
 }
 
 # Function to display a summary of file actions
 display_file_action_summary() {
-  echo -e "\n${INFO_COLOR}Summary of file actions:${NC}"
+  show_info "\nSummary of file actions:"
   display_files "Skipped files" skipped_files[@]
   display_files "Replaced files" replaced_files[@]
   display_files "Merged files" merged_files[@]
@@ -495,7 +541,7 @@ parse_arguments() {
       shift
       ;;
     -h | --help)
-      echo -e "${INFO_COLOR}Usage: project-cli [--verbose] [-t template] [-n project_name] [-f features]${NC}"
+      show_info "Usage: project-cli [--verbose] [-t template] [-n project_name] [-f features]"
       exit 0
       ;;
     *) handle_error "Unknown parameter passed: $1" ;;
@@ -548,7 +594,7 @@ main() {
   # Display a summary of file actions
   display_file_action_summary
 
-  echo -e "\n${PROMPT_COLOR}Project setup for '$project_name' complete.${NC}\n"
+  show_highlight "\nProject setup for '$project_name' complete.\n"
 }
 
 main "$@"
