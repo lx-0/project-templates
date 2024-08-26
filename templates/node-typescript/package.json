@@ -2,7 +2,7 @@
   "name": "node-typescript-template",
   "version": "0.1.0",
   "description": "A template project for Node.js with TypeScript",
-  "author": "Alexander Wegener",
+  "author": "Alexander Wegener <alex@9aw.de>",
   "license": "MIT",
   "scripts": {
     "build-ts": "tsc",
