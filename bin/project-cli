@@ -111,19 +111,19 @@ merge_file() {
       case $choice in
       4)
         CHOICE_ALL=1
-        choice=1
+        choice[0]=1
         ;;
       5)
         CHOICE_ALL=2
-        choice=2
+        choice[0]=2
         ;;
       6)
         CHOICE_ALL=3
-        choice=3
+        choice[0]=3
         ;;
       esac
     else
-      choice=$CHOICE_ALL
+      choice[0]=$CHOICE_ALL
     fi
 
     case $choice in
@@ -166,7 +166,7 @@ merge_file() {
       merged_files+=("Merged: $relative_source_path into $relative_target_path (from $feature)")
       ;;
     *)
-      echo -e "${ERROR_COLOR}Invalid choice. Skipping source file $relative_source_path.${NC}"
+      echo -e "${ERROR_COLOR}Invalid choice '$choice'. Skipping source file $relative_source_path.${NC}"
       skipped_files+=("Skipped: $relative_source_path (from $feature) [Invalid choice]")
       ;;
     esac
